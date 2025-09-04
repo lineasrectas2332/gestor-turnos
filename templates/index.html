@@ -20,6 +20,8 @@
         --surface: #1e1e1e;
         --card: #252525;
         --hover: #2d2d2d;
+        --success: #4caf50;
+        --error: #f44336;
       }
 
       * {
@@ -56,7 +58,6 @@
         );
         padding: 25px;
         text-align: center;
-        position: relative;
       }
 
       .logo {
@@ -103,13 +104,11 @@
         justify-content: center;
         align-items: center;
         transition: all 0.3s ease;
-        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
       }
 
       .nav-btn:hover {
         background-color: var(--primary);
         transform: translateY(-2px);
-        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
       }
 
       .current-month {
@@ -132,7 +131,6 @@
         color: var(--primary);
         font-weight: 600;
         font-size: 14px;
-        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
       }
 
       .calendar td {
@@ -144,19 +142,17 @@
         position: relative;
       }
 
-      .calendar td:hover {
-        background-color: var(--hover);
-      }
-
       .calendar td.active {
         background-color: var(--primary);
         color: white;
         box-shadow: 0 4px 8px rgba(126, 87, 194, 0.4);
       }
 
-      .calendar td.inactive {
+      .calendar td.inactive,
+      .calendar td.past {
         color: var(--gray);
         cursor: not-allowed;
+        opacity: 0.5;
       }
 
       .day-number {
@@ -180,6 +176,7 @@
         border-radius: 12px;
         padding: 20px;
         margin-top: 20px;
+        margin-bottom: 20px;
       }
 
       .turns-title {
@@ -199,6 +196,7 @@
         display: grid;
         grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
         gap: 10px;
+        margin-bottom: 15px;
       }
 
       .time-slot {
@@ -211,12 +209,6 @@
         transition: all 0.3s ease;
       }
 
-      .time-slot:hover {
-        background-color: var(--primary);
-        transform: translateY(-2px);
-        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
-      }
-
       .time-slot.selected {
         background-color: var(--secondary);
         border-color: var(--secondary);
@@ -224,20 +216,30 @@
         font-weight: bold;
       }
 
-      @media (max-width: 600px) {
-        .calendar-header {
-          flex-direction: column;
-          gap: 15px;
-        }
+      .time-slot.disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
 
-        .time-slots {
-          grid-template-columns: repeat(3, 1fr);
-        }
+      .confirmation-section {
+        background-color: var(--card);
+        border-radius: 12px;
+        padding: 20px;
+        margin-top: 20px;
+        display: none;
+      }
 
-        .calendar th,
-        .calendar td {
-          padding: 8px 0;
-        }
+      .confirmation-title {
+        font-size: 18px;
+        margin-bottom: 20px;
+        color: var(--light);
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+
+      .confirmation-title i {
+        color: var(--success);
       }
     </style>
   </head>
@@ -277,40 +279,73 @@
               <th>Dom</th>
             </tr>
           </thead>
-          <tbody id="calendar-body">
-            <!-- Los días se generarán con JavaScript -->
-          </tbody>
+          <tbody id="calendar-body"></tbody>
         </table>
 
         <div class="turns-section">
           <h3 class="turns-title">
-            <i class="far fa-clock"></i>
-            Turnos disponibles - 30 min
+            <i class="far fa-clock"></i>Turnos disponibles - 30 min
           </h3>
-          <div class="time-slots" id="time-slots">
-            <!-- Los horarios se generarán con JavaScript -->
+          <div id="selection-message" class="message info">
+            <i class="fas fa-info-circle"></i> Selecciona una fecha para ver los
+            horarios disponibles
           </div>
+          <div class="time-slots" id="time-slots"></div>
+        </div>
+
+        <div class="confirmation-section" id="confirmation-section">
+          <h3 class="confirmation-title">
+            <i class="fas fa-calendar-check"></i> Confirmar reserva
+          </h3>
+          <div class="selected-info" id="selected-info"></div>
+          <div class="form-group">
+            <label for="client-name">Nombre completo</label>
+            <input
+              type="text"
+              id="client-name"
+              placeholder="Ingresa tu nombre"
+            />
+          </div>
+          <div class="form-group">
+            <label for="client-phone">Número de teléfono</label>
+            <input
+              type="tel"
+              id="client-phone"
+              placeholder="Ingresa tu número de WhatsApp"
+            />
+          </div>
+          <button class="btn-confirm" id="btn-confirm">
+            <i class="fab fa-whatsapp"></i> Enviar confirmación por WhatsApp
+          </button>
         </div>
       </div>
     </div>
 
     <script>
       document.addEventListener("DOMContentLoaded", function () {
-        let currentDate = new Date(2025, 8, 1); // Septiembre 2025 (los meses van de 0 a 11)
+        let currentDate = new Date(2025, 8, 1);
         let selectedDate = null;
+        let selectedTime = null;
 
         const currentMonthElement = document.getElementById("current-month");
         const calendarBody = document.getElementById("calendar-body");
         const timeSlotsContainer = document.getElementById("time-slots");
+        const selectionMessage = document.getElementById("selection-message");
+        const confirmationSection = document.getElementById(
+          "confirmation-section"
+        );
+        const selectedInfo = document.getElementById("selected-info");
         const prevMonthButton = document.getElementById("prev-month");
         const nextMonthButton = document.getElementById("next-month");
+        const confirmButton = document.getElementById("btn-confirm");
 
-        // Actualizar el calendario
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
         function updateCalendar() {
           const year = currentDate.getFullYear();
           const month = currentDate.getMonth();
 
-          // Actualizar el texto del mes y año
           const monthNames = [
             "Enero",
             "Febrero",
@@ -327,143 +362,188 @@
           ];
           currentMonthElement.textContent = `${monthNames[month]} ${year}`;
 
-          // Limpiar el calendario
           calendarBody.innerHTML = "";
 
-          // Obtener el primer día del mes y la cantidad de días
           const firstDay = new Date(year, month, 1).getDay();
           const daysInMonth = new Date(year, month + 1, 0).getDate();
 
-          // Ajustar para que la semana comience en lunes (0 -> lunes, 6 -> domingo)
           let startDay = firstDay === 0 ? 6 : firstDay - 1;
 
-          // Crear las filas del calendario
           let date = 1;
           for (let i = 0; i < 6; i++) {
-            // Crear una fila
             const row = document.createElement("tr");
-
-            // Crear celdas para cada día de la semana
             for (let j = 0; j < 7; j++) {
               const cell = document.createElement("td");
-
               if (i === 0 && j < startDay) {
-                // Celda vacía antes del primer día del mes
                 cell.classList.add("inactive");
-                cell.innerHTML = "";
               } else if (date > daysInMonth) {
-                // Celda vacía después del último día del mes
                 cell.classList.add("inactive");
-                cell.innerHTML = "";
               } else {
-                // Día del mes
+                const cellDate = new Date(year, month, date);
+                cellDate.setHours(0, 0, 0, 0);
+
                 const dayNumber = document.createElement("div");
                 dayNumber.classList.add("day-number");
                 dayNumber.textContent = date;
 
-                // Comprobar si es hoy
-                const today = new Date();
-                if (
-                  date === today.getDate() &&
-                  month === today.getMonth() &&
-                  year === today.getFullYear()
-                ) {
+                if (cellDate.getTime() === today.getTime()) {
                   cell.classList.add("today");
                 }
 
-                // Comprobar si está seleccionado
+                if (cellDate < today) {
+                  cell.classList.add("past");
+                }
+
                 if (
                   selectedDate &&
-                  date === selectedDate.getDate() &&
-                  month === selectedDate.getMonth() &&
-                  year === selectedDate.getFullYear()
+                  cellDate.getTime() === selectedDate.getTime()
                 ) {
                   cell.classList.add("active");
                 }
 
                 cell.appendChild(dayNumber);
-                cell.setAttribute("data-date", date);
 
-                // Añadir evento de clic
-                cell.addEventListener("click", function () {
-                  selectDate(new Date(year, month, date));
-                });
+                if (cellDate >= today) {
+                  cell.addEventListener("click", function () {
+                    selectDate(cellDate);
+                  });
+                } else {
+                  cell.style.cursor = "not-allowed";
+                }
 
                 date++;
               }
-
               row.appendChild(cell);
             }
-
             calendarBody.appendChild(row);
-
-            // Si ya hemos pasado todos los días, salir del bucle
-            if (date > daysInMonth) {
-              break;
-            }
+            if (date > daysInMonth) break;
           }
         }
 
-        // Seleccionar una fecha
         function selectDate(date) {
+          date.setHours(0, 0, 0, 0);
+          if (date < today) {
+            selectionMessage.innerHTML = `<i class="fas fa-exclamation-circle"></i> No puedes seleccionar una fecha pasada`;
+            selectionMessage.className = "message error";
+            return;
+          }
+
           selectedDate = date;
+          selectedTime = null;
+
+          selectionMessage.innerHTML = `<i class="fas fa-check-circle"></i> Has seleccionado el ${formatSelectedDate()}. Ahora elige un horario`;
+          selectionMessage.className = "message info";
+
           updateCalendar();
           generateTimeSlots();
+          confirmationSection.style.display = "none";
         }
 
-        // Generar horarios disponibles
         function generateTimeSlots() {
           timeSlotsContainer.innerHTML = "";
 
           if (!selectedDate) {
+            selectionMessage.innerHTML = `<i class="fas fa-info-circle"></i> Selecciona una fecha para ver los horarios disponibles`;
             return;
           }
 
-          // Generar horarios de 9:00 a 18:00 cada 30 minutos
+          const isToday = selectedDate.getTime() === today.getTime();
+          const now = new Date();
+          const currentHour = now.getHours();
+          const currentMinute = now.getMinutes();
+
           for (let hour = 9; hour < 18; hour++) {
             for (let minute = 0; minute < 60; minute += 30) {
               const timeSlot = document.createElement("div");
-              timeSlot.classList.add("time-slot");
-
-              // Formatear la hora
               const formattedHour = hour.toString().padStart(2, "0");
               const formattedMinute = minute.toString().padStart(2, "0");
               timeSlot.textContent = `${formattedHour}:${formattedMinute}`;
+              timeSlot.setAttribute(
+                "data-time",
+                `${formattedHour}:${formattedMinute}`
+              );
 
+              if (
+                isToday &&
+                (hour < currentHour ||
+                  (hour === currentHour && minute < currentMinute))
+              ) {
+                timeSlot.classList.add("time-slot", "disabled");
+                timeSlotsContainer.appendChild(timeSlot);
+                continue;
+              }
+
+              timeSlot.classList.add("time-slot");
               timeSlot.addEventListener("click", function () {
-                // Quitar selección anterior
                 document
                   .querySelectorAll(".time-slot.selected")
-                  .forEach((slot) => {
-                    slot.classList.remove("selected");
-                  });
-
-                // Seleccionar este horario
+                  .forEach((slot) => slot.classList.remove("selected"));
                 timeSlot.classList.add("selected");
+                selectedTime = timeSlot.getAttribute("data-time");
 
-                // Aquí podrías agregar la lógica para proceder con la reserva
-                console.log(
-                  `Reserva para: ${selectedDate.toDateString()} a las ${formattedHour}:${formattedMinute}`
-                );
+                selectionMessage.innerHTML = `<i class="fas fa-check-circle"></i> Has seleccionado el ${formatSelectedDate()} a las ${selectedTime}`;
+                selectionMessage.className = "message info";
+
+                confirmationSection.style.display = "block";
+                updateSelectedInfo();
               });
-
               timeSlotsContainer.appendChild(timeSlot);
             }
           }
         }
 
-        // Eventos para los botones de navegación
+        function formatSelectedDate() {
+          const day = selectedDate.getDate();
+          const month = selectedDate.getMonth() + 1;
+          const year = selectedDate.getFullYear();
+          return `${day}/${month}/${year}`;
+        }
+
+        function updateSelectedInfo() {
+          selectedInfo.innerHTML = `
+          <div class="selected-date"><i class="far fa-calendar-alt"></i><span>${formatSelectedDate()}</span></div>
+          <div class="selected-time"><i class="far fa-clock"></i><span>${selectedTime}</span></div>
+        `;
+        }
+
+        confirmButton.addEventListener("click", function () {
+          const clientName = document.getElementById("client-name").value;
+          const clientPhone = document.getElementById("client-phone").value;
+
+          if (!clientName || !clientPhone) {
+            alert("Por favor, completa todos los campos");
+            return;
+          }
+
+          const message = `Hola, me gustaría reservar un turno en #lodeltirry para el ${formatSelectedDate()} a las ${selectedTime}. Mi nombre es ${clientName}.`;
+          const encodedMessage = encodeURIComponent(message);
+          const whatsappURL = `https://wa.me/549${clientPhone.replace(
+            /\D/g,
+            ""
+          )}?text=${encodedMessage}`;
+          window.open(whatsappURL, "_blank");
+        });
+
         prevMonthButton.addEventListener("click", function () {
           currentDate.setMonth(currentDate.getMonth() - 1);
           updateCalendar();
+          resetSelection();
         });
 
         nextMonthButton.addEventListener("click", function () {
           currentDate.setMonth(currentDate.getMonth() + 1);
           updateCalendar();
+          resetSelection();
         });
 
-        // Inicializar el calendario
+        function resetSelection() {
+          selectedDate = null;
+          selectedTime = null;
+          timeSlotsContainer.innerHTML = "";
+          confirmationSection.style.display = "none";
+          selectionMessage.innerHTML = `<i class="fas fa-info-circle"></i> Selecciona una fecha para ver los horarios disponibles`;
+        }
+
         updateCalendar();
       });
     </script>
