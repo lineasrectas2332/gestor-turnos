@@ -91,8 +91,7 @@
         border-radius: 50%;
         background: linear-gradient(
           135deg,
-          var(--blue-light) 0%,
-          var(--blue) 100%
+          var(--blue-light) 0% var(--blue) 100%
         );
         opacity: 0.3;
         z-index: 0;
@@ -154,6 +153,7 @@
         font-weight: 700;
         transition: all 0.3s;
         box-shadow: 0 4px 12px rgba(37, 211, 102, 0.3);
+        width: 100%;
       }
 
       .btn-whatsapp:hover {
@@ -169,6 +169,7 @@
         font-weight: 600;
         transition: all 0.3s;
         padding: 12px 24px;
+        width: 100%;
       }
 
       .btn-outline-primary:hover {
@@ -208,6 +209,7 @@
         background: var(--primary);
         transform: scaleX(0);
         transition: transform 0.3s;
+        z-index: 1;
       }
 
       .time-slot:hover {
@@ -333,56 +335,6 @@
         border-color: var(--primary);
         box-shadow: 0 0 0 0.3rem rgba(214, 48, 49, 0.25);
         transform: translateY(-2px);
-      }
-
-      .step-progress {
-        display: flex;
-        justify-content: space-between;
-        margin-bottom: 2.5rem;
-        position: relative;
-      }
-
-      .step-progress::before {
-        content: "";
-        position: absolute;
-        top: 20px;
-        left: 0;
-        right: 0;
-        height: 6px;
-        background: linear-gradient(
-          90deg,
-          var(--primary) 0%,
-          var(--primary-light) 100%
-        );
-        z-index: 1;
-        border-radius: 3px;
-      }
-
-      .step {
-        position: relative;
-        z-index: 2;
-        text-align: center;
-        width: 45px;
-        height: 45px;
-        line-height: 45px;
-        border-radius: 50%;
-        background: white;
-        color: var(--gray);
-        font-weight: bold;
-        border: 3px solid var(--primary);
-        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
-      }
-
-      .step.active {
-        background: var(--primary);
-        color: white;
-        transform: scale(1.1);
-      }
-
-      .step.completed {
-        background: var(--yellow);
-        color: var(--dark);
-        border-color: var(--yellow);
       }
 
       .whatsapp-confirmation {
@@ -561,6 +513,59 @@
         margin-bottom: 20px;
         box-shadow: 0 5px 15px rgba(162, 155, 254, 0.3);
       }
+
+      .calendar-container {
+        display: grid;
+        grid-template-columns: repeat(7, 1fr);
+        gap: 10px;
+        margin-top: 20px;
+      }
+
+      .calendar-day {
+        padding: 10px;
+        text-align: center;
+        border-radius: 8px;
+        border: 2px solid var(--light-gray);
+        cursor: pointer;
+        transition: all 0.3s;
+      }
+
+      .calendar-day:hover {
+        border-color: var(--primary);
+        background-color: rgba(214, 48, 49, 0.05);
+      }
+
+      .calendar-day.active {
+        background: linear-gradient(
+          135deg,
+          var(--primary) 0%,
+          var(--primary-light) 100%
+        );
+        color: white;
+        border-color: var(--primary);
+      }
+
+      .calendar-day.disabled {
+        background-color: var(--light-gray);
+        color: #b2bec3;
+        cursor: not-allowed;
+        text-decoration: line-through;
+      }
+
+      .calendar-header {
+        display: grid;
+        grid-template-columns: repeat(7, 1fr);
+        gap: 10px;
+        margin-bottom: 10px;
+        text-align: center;
+        font-weight: bold;
+      }
+
+      .month-nav {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 15px;
+      }
     </style>
   </head>
   <body>
@@ -607,7 +612,7 @@
           Reserva tu Turno Online
         </h1>
         <p class="lead fs-4" style="color: var(--dark)">
-          Solo corte de pelo - 15 minutos
+          Solo corte de pelo - 30 minutos
         </p>
         <div class="mt-4">
           <span class="badge badge-custom me-3">
@@ -625,17 +630,10 @@
       <div class="decorative-circle circle-1"></div>
       <div class="decorative-circle circle-2"></div>
 
-      <!-- Progress Steps -->
-      <div class="step-progress">
-        <div class="step completed">1</div>
-        <div class="step active">2</div>
-        <div class="step">3</div>
-        <div class="step">4</div>
-      </div>
-
       <div class="info-box">
         <i class="fas fa-info-circle me-2"></i> Todos los turnos tienen una
-        duración de 15 minutos. Selecciona el día y horario que prefieras.
+        duración de 30 minutos. Selecciona el día y horario que prefieras.
+        <strong>Cerrado los lunes y domingos.</strong>
       </div>
 
       <div class="row">
@@ -653,8 +651,8 @@
                 Corte moderno y estilo a tu medida con los mejores profesionales
               </p>
               <div class="gray-bg">
-                <p class="card-text fw-bold mb-1 fs-5">Duración: 15 min</p>
-                <p class="card-text price-tag mb-0">Precio: $1200</p>
+                <p class="card-text fw-bold mb-1 fs-5">Duración: 30 min</p>
+                <p class="card-text price-tag mb-0">Precio: $10000</p>
               </div>
             </div>
           </div>
@@ -698,15 +696,6 @@
                     Te enviaremos la confirmación por WhatsApp
                   </div>
                 </div>
-                <div class="mb-3">
-                  <label class="form-label">Email</label>
-                  <input
-                    type="email"
-                    class="form-control"
-                    id="client-email"
-                    placeholder="Ingresa tu email (opcional)"
-                  />
-                </div>
                 <div class="form-check mb-3">
                   <input
                     class="form-check-input"
@@ -732,33 +721,28 @@
               </h5>
             </div>
             <div class="card-body">
-              <div class="row">
-                <div class="col-md-3 col-6">
-                  <div class="day-selector active" data-date="2023-10-25">
-                    <div class="fw-bold">Hoy</div>
-                    <div>25 Oct</div>
-                    <div class="small">Miércoles</div>
-                  </div>
-                </div>
-                <div class="col-md-3 col-6">
-                  <div class="day-selector" data-date="2023-10-26">
-                    <div class="fw-bold">Mañana</div>
-                    <div>26 Oct</div>
-                    <div class="small">Jueves</div>
-                  </div>
-                </div>
-                <div class="col-md-3 col-6">
-                  <div class="day-selector" data-date="2023-10-27">
-                    <div>27 Oct</div>
-                    <div class="small">Viernes</div>
-                  </div>
-                </div>
-                <div class="col-md-3 col-6">
-                  <div class="day-selector" data-date="2023-10-28">
-                    <div>28 Oct</div>
-                    <div class="small">Sábado</div>
-                  </div>
-                </div>
+              <div class="month-nav">
+                <button class="btn btn-outline-primary" id="prev-month">
+                  <i class="fas fa-chevron-left"></i> Mes anterior
+                </button>
+                <h4 id="current-month">Noviembre 2023</h4>
+                <button class="btn btn-outline-primary" id="next-month">
+                  Mes siguiente <i class="fas fa-chevron-right"></i>
+                </button>
+              </div>
+
+              <div class="calendar-header">
+                <div>Lun</div>
+                <div>Mar</div>
+                <div>Mié</div>
+                <div>Jue</div>
+                <div>Vie</div>
+                <div>Sáb</div>
+                <div>Dom</div>
+              </div>
+
+              <div class="calendar-container" id="calendar">
+                <!-- Los días del calendario se generarán con JavaScript -->
               </div>
             </div>
           </div>
@@ -766,40 +750,32 @@
           <div class="card mb-4">
             <div class="card-header">
               <h5 class="card-title mb-0">
-                <i class="fas fa-clock me-2"></i>Turnos disponibles - 15 min
+                <i class="fas fa-clock me-2"></i>Turnos disponibles - 30 min
               </h5>
             </div>
             <div class="card-body">
               <h6 class="mb-3" style="color: var(--primary)">Mañana</h6>
               <div class="d-flex flex-wrap mb-4">
-                <div class="time-slot disabled">08:00</div>
-                <div class="time-slot">08:15</div>
-                <div class="time-slot">08:30</div>
-                <div class="time-slot">08:45</div>
-                <div class="time-slot disabled">09:00</div>
-                <div class="time-slot">09:15</div>
+                <div class="time-slot">09:00</div>
                 <div class="time-slot">09:30</div>
-                <div class="time-slot disabled">09:45</div>
                 <div class="time-slot">10:00</div>
-                <div class="time-slot">10:15</div>
                 <div class="time-slot">10:30</div>
-                <div class="time-slot">10:45</div>
+                <div class="time-slot">11:00</div>
+                <div class="time-slot">11:30</div>
+                <div class="time-slot">12:00</div>
+                <div class="time-slot">12:30</div>
               </div>
 
               <h6 class="mb-3" style="color: var(--primary)">Tarde</h6>
               <div class="d-flex flex-wrap">
                 <div class="time-slot">14:00</div>
-                <div class="time-slot">14:15</div>
                 <div class="time-slot">14:30</div>
-                <div class="time-slot">14:45</div>
-                <div class="time-slot disabled">15:00</div>
-                <div class="time-slot selected">15:15</div>
+                <div class="time-slot">15:00</div>
                 <div class="time-slot">15:30</div>
-                <div class="time-slot">15:45</div>
-                <div class="time-slot disabled">16:00</div>
-                <div class="time-slot">16:15</div>
+                <div class="time-slot">16:00</div>
                 <div class="time-slot">16:30</div>
-                <div class="time-slot">16:45</div>
+                <div class="time-slot">17:00</div>
+                <div class="time-slot">17:30</div>
               </div>
             </div>
           </div>
@@ -823,26 +799,22 @@
                     <div class="resume-item">
                       <span class="resume-label">Duración:</span>
                       <span class="resume-value" id="resume-duration"
-                        >15 minutos</span
+                        >30 minutos</span
                       >
                     </div>
                     <div class="resume-item">
                       <span class="resume-label">Precio:</span>
-                      <span class="resume-value" id="resume-price">$1200</span>
+                      <span class="resume-value" id="resume-price">$10000</span>
                     </div>
                   </div>
                   <div class="col-sm-6">
                     <div class="resume-item">
                       <span class="resume-label">Fecha:</span>
-                      <span class="resume-value" id="resume-date"
-                        >Miércoles, 25 de Octubre</span
-                      >
+                      <span class="resume-value" id="resume-date">-</span>
                     </div>
                     <div class="resume-item">
                       <span class="resume-label">Horario:</span>
-                      <span class="resume-value" id="resume-time"
-                        >15:15 hs</span
-                      >
+                      <span class="resume-value" id="resume-time">-</span>
                     </div>
                     <div class="resume-item">
                       <span class="resume-label">Cliente:</span>
@@ -889,13 +861,11 @@
               Ciudad
             </p>
             <p><i class="fas fa-phone me-2"></i> (123) 456-7890</p>
-            <p><i class="fas fa-envelope me-2"></i> info@estilobelleza.com</p>
           </div>
           <div class="col-md-4">
             <h5>Horario de Atención</h5>
-            <p>Lunes a Viernes: 8:00 - 19:00</p>
-            <p>Sábados: 9:00 - 17:00</p>
-            <p>Domingos: Cerrado</p>
+            <p>Martes a Sábado: 9:00 - 18:00</p>
+            <p>Domingos y Lunes: Cerrado</p>
           </div>
         </div>
         <hr />
@@ -933,29 +903,136 @@
         // Variables para almacenar la selección
         let selectedService = {
           name: "Corte de Pelo",
-          duration: "15",
-          price: "1200",
+          duration: "30",
+          price: "10000",
         };
-        let selectedDate = "2023-10-25";
-        let selectedTime = "15:15";
+        let selectedDate = null;
+        let selectedTime = null;
         let clientName = "";
         let clientPhone = "";
+
+        // Variables para el calendario
+        let currentDate = new Date();
+        let currentMonth = currentDate.getMonth();
+        let currentYear = currentDate.getFullYear();
 
         // Inicializar toast de Bootstrap
         const successToast = new bootstrap.Toast(
           document.getElementById("success-toast")
         );
 
-        // Selección de día
-        const daySelectors = document.querySelectorAll(".day-selector");
-        daySelectors.forEach((day) => {
-          day.addEventListener("click", function () {
-            daySelectors.forEach((d) => d.classList.remove("active"));
-            this.classList.add("active");
-            selectedDate = this.getAttribute("data-date");
-            updateResume();
+        // Generar calendario
+        function generateCalendar(month, year) {
+          const calendarContainer = document.getElementById("calendar");
+          calendarContainer.innerHTML = "";
+
+          const monthNames = [
+            "Enero",
+            "Febrero",
+            "Marzo",
+            "Abril",
+            "Mayo",
+            "Junio",
+            "Julio",
+            "Agosto",
+            "Septiembre",
+            "Octubre",
+            "Noviembre",
+            "Diciembre",
+          ];
+
+          document.getElementById(
+            "current-month"
+          ).textContent = `${monthNames[month]} ${year}`;
+
+          // Primer día del mes
+          const firstDay = new Date(year, month, 1);
+          // Último día del mes
+          const lastDay = new Date(year, month + 1, 0);
+
+          // Días de la semana (0 = Domingo, 1 = Lunes, ...)
+          const startDayOfWeek = firstDay.getDay();
+          const daysInMonth = lastDay.getDate();
+
+          // Ajustar para que la semana comience el lunes
+          let startOffset = startDayOfWeek === 0 ? 6 : startDayOfWeek - 1;
+
+          // Crear días vacíos al inicio si es necesario
+          for (let i = 0; i < startOffset; i++) {
+            const emptyDay = document.createElement("div");
+            emptyDay.classList.add("calendar-day", "disabled");
+            calendarContainer.appendChild(emptyDay);
+          }
+
+          // Crear los días del mes
+          const today = new Date();
+          today.setHours(0, 0, 0, 0);
+
+          for (let day = 1; day <= daysInMonth; day++) {
+            const dayDate = new Date(year, month, day);
+            const dayOfWeek = dayDate.getDay();
+
+            const dayElement = document.createElement("div");
+            dayElement.classList.add("calendar-day");
+            dayElement.textContent = day;
+
+            // Deshabilitar domingos (0) y lunes (1)
+            if (dayOfWeek === 0 || dayOfWeek === 1) {
+              dayElement.classList.add("disabled");
+            } else if (dayDate < today) {
+              // Deshabilitar días pasados
+              dayElement.classList.add("disabled");
+            } else {
+              dayElement.addEventListener("click", function () {
+                document.querySelectorAll(".calendar-day").forEach((d) => {
+                  d.classList.remove("active");
+                });
+                this.classList.add("active");
+
+                selectedDate = new Date(year, month, day);
+                updateResume();
+              });
+            }
+
+            // Marcar el día actual
+            if (
+              dayDate.getTime() === today.getTime() &&
+              dayDate.getMonth() === today.getMonth() &&
+              dayDate.getFullYear() === today.getFullYear()
+            ) {
+              dayElement.style.borderColor = "var(--primary)";
+              dayElement.style.fontWeight = "bold";
+            }
+
+            calendarContainer.appendChild(dayElement);
+          }
+        }
+
+        // Navegación del calendario
+        document
+          .getElementById("prev-month")
+          .addEventListener("click", function () {
+            currentMonth--;
+            if (currentMonth < 0) {
+              currentMonth = 11;
+              currentYear--;
+            }
+            generateCalendar(currentMonth, currentYear);
           });
-        });
+
+        document
+          .getElementById("next-month")
+          .addEventListener("click", function () {
+            currentMonth++;
+            if (currentMonth > 11) {
+              currentMonth = 0;
+              currentYear++;
+            }
+            generateCalendar(currentMonth, currentYear);
+          });
+
+        // Inicializar calendario
+        generateCalendar(currentDate.getMonth(), currentDate.getFullYear());
 
         // Selección de horario
         const timeSlots = document.querySelectorAll(
@@ -1004,19 +1081,22 @@
           document.getElementById("resume-price").textContent =
             "$" + selectedService.price;
 
-          // Formatear fecha
-          const dateObj = new Date(selectedDate);
-          const options = {
-            weekday: "long",
-            day: "numeric",
-            month: "long",
-            year: "numeric",
-          };
-          document.getElementById("resume-date").textContent =
-            dateObj.toLocaleDateString("es-ES", options);
+          // Formatear fecha si está seleccionada
+          if (selectedDate) {
+            const options = {
+              weekday: "long",
+              day: "numeric",
+              month: "long",
+              year: "numeric",
+            };
+            document.getElementById("resume-date").textContent =
+              selectedDate.toLocaleDateString("es-ES", options);
+          } else {
+            document.getElementById("resume-date").textContent = "-";
+          }
 
           document.getElementById("resume-time").textContent =
-            selectedTime + " hs";
+            selectedTime || "-";
           document.getElementById("resume-client").textContent =
             clientName || "-";
         }
@@ -1045,6 +1125,16 @@
               clientPhoneInput.classList.remove("is-invalid");
             }
 
+            if (!selectedDate) {
+              alert("Por favor selecciona una fecha");
+              formIsValid = false;
+            }
+
+            if (!selectedTime) {
+              alert("Por favor selecciona un horario");
+              formIsValid = false;
+            }
+
             if (!formIsValid) {
               return;
             }
@@ -1058,7 +1148,12 @@
             } a las ${selectedTime} hs.`;
 
             // En una implementación real, aquí se enviaría el mensaje por WhatsApp
-            // window.open(`https://wa.me/${phoneNumber}?text=${encodeURIComponent(message)}`, '_blank');
+            window.open(
+              `https://wa.me/${phoneNumber}?text=${encodeURIComponent(
+                message
+              )}`,
+              "_blank"
+            );
 
             // Mostrar mensaje de éxito
             successToast.show();
@@ -1071,7 +1166,6 @@
               client: {
                 name: clientNameInput.value,
                 phone: clientPhoneInput.value,
-                email: document.getElementById("client-email").value,
               },
             });
           });
