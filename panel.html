@@ -663,7 +663,11 @@
             <button class="btn btn-danger" id="clear-data">
               <i class="fas fa-trash"></i> Eliminar Todos los Datos
             </button>
+            <button class="btn btn-warning" id="clean-expired">
+              <i class="fas fa-broom"></i> Limpiar Turnos Vencidos
+            </button>
           </div>
+          <div id="clean-message"></div>
         </div>
 
         <div class="card">
@@ -686,6 +690,10 @@
           <p>
             <strong>Por defecto:</strong> Los lunes están marcados como no
             disponibles.
+          </p>
+          <p>
+            <strong>Turnos vencidos:</strong> Los turnos se eliminan
+            automáticamente a las 8:00 AM del día siguiente.
           </p>
         </div>
       </div>
@@ -725,642 +733,75 @@
     </div>
 
     <script>
-      document.addEventListener("DOMContentLoaded", function () {
-        const servicePriceInput = document.getElementById("service-price");
-        const savePriceButton = document.getElementById("save-price");
-        const priceMessage = document.getElementById("price-message");
-        const reservationsBody = document.getElementById("reservations-body");
-        const emptyState = document.getElementById("empty-state");
-        const reservationsTable = document.getElementById("reservations-table");
-        const exportButton = document.getElementById("export-data");
-        const clearButton = document.getElementById("clear-data");
-        const statsContainer = document.getElementById("stats-container");
-        const dayOptions = document.querySelectorAll(".day-option");
-        const saveDaysButton = document.getElementById("save-days");
-        const daysMessage = document.getElementById("days-message");
-        const timeSlotsConfig = document.getElementById("time-slots-config");
-        const saveTimesButton = document.getElementById("save-times");
-        const timesMessage = document.getElementById("times-message");
-        const reservationsByDayContainer = document.getElementById(
-          "reservations-by-day"
-        );
-        const dayTabs = document.querySelectorAll(".day-tab");
-        const copyToOtherDaysButton =
-          document.getElementById("copy-to-other-days");
-        const resetTimesButton = document.getElementById("reset-times");
+      const reservationsBody = document.getElementById("reservationsBody");
+      const reservationsTable = document.getElementById("reservationsTable");
+      const emptyState = document.getElementById("emptyState");
+      const statsContainer = document.getElementById("statsContainer");
+      const cleanMessage = document.getElementById("cleanMessage");
 
-        let currentSelectedDay = 0; // Domingo por defecto
+      const BACKEND_URL = "https://TU_BACKEND_URL/api"; // ⬅️ poné aquí tu URL backend
 
-        // Cargar precio actual
-        loadCurrentPrice();
+      // --- API helpers ---
+      async function fetchReservations() {
+        const res = await fetch(`${BACKEND_URL}/reservations`);
+        return await res.json();
+      }
 
-        // Cargar días no disponibles
-        loadUnavailableDays();
+      async function deleteReservation(id) {
+        if (!confirm("¿Seguro que querés borrar esta reserva?")) return;
+        const res = await fetch(`${BACKEND_URL}/reservations/${id}`, {
+          method: "DELETE",
+        });
+        if (res.status === 204) {
+          loadReservations();
+        } else {
+          alert("Error borrando reserva");
+        }
+      }
 
-        // Cargar horarios disponibles
-        loadAvailableTimes();
+      // --- Renderizado ---
+      function renderReservations(reservations) {
+        reservationsBody.innerHTML = "";
+        statsContainer.innerHTML = "";
 
-        // Cargar reservas
-        loadReservations();
+        if (reservations.length === 0) {
+          emptyState.style.display = "block";
+          reservationsTable.style.display = "none";
+          return;
+        }
+        emptyState.style.display = "none";
+        reservationsTable.style.display = "table";
 
-        // Configurar eventos para los días no disponibles
-        dayOptions.forEach((option) => {
-          option.addEventListener("click", function () {
-            this.classList.toggle("selected");
-          });
+        reservations.forEach((r) => {
+          const tr = document.createElement("tr");
+          tr.innerHTML = `
+      <td>${r.clientName}</td>
+      <td>${r.phone}</td>
+      <td>${new Date(r.date).toLocaleDateString()}</td>
+      <td>${r.time}</td>
+      <td>
+        <button onclick="deleteReservation('${r.id}')">Eliminar</button>
+      </td>
+    `;
+          reservationsBody.appendChild(tr);
         });
 
-        // Configurar eventos para las pestañas de días
-        dayTabs.forEach((tab) => {
-          tab.addEventListener("click", function () {
-            // Guardar los horarios del día actual antes de cambiar
-            saveCurrentDayTimes();
+        // Estadísticas simples (ejemplo: total reservas)
+        statsContainer.textContent = `Total de reservas: ${reservations.length}`;
+      }
 
-            // Cambiar pestaña activa
-            dayTabs.forEach((t) => t.classList.remove("active"));
-            this.classList.add("active");
-
-            // Actualizar día seleccionado
-            currentSelectedDay = parseInt(this.getAttribute("data-day"));
-
-            // Cargar horarios para el nuevo día seleccionado
-            loadTimeSlotsForDay(currentSelectedDay);
-          });
-        });
-
-        // Guardar días no disponibles
-        saveDaysButton.addEventListener("click", function () {
-          const selectedDays = [];
-          document
-            .querySelectorAll(".day-option.selected")
-            .forEach((option) => {
-              selectedDays.push(parseInt(option.getAttribute("data-day")));
-            });
-
-          localStorage.setItem("unavailableDays", JSON.stringify(selectedDays));
-          showMessage(
-            daysMessage,
-            "Días no disponibles actualizados correctamente",
-            "success"
-          );
-        });
-
-        // Guardar horarios disponibles
-        saveTimesButton.addEventListener("click", function () {
-          saveCurrentDayTimes();
-          showMessage(
-            timesMessage,
-            "Horarios disponibles actualizados correctamente",
-            "success"
-          );
-        });
-
-        // Copiar horarios a otros días
-        copyToOtherDaysButton.addEventListener("click", function () {
-          const currentTimes = getSelectedTimesForDay(currentSelectedDay);
-
-          // Pedir confirmación
-          if (
-            !confirm(
-              `¿Estás seguro de que quieres copiar los horarios del ${getDayName(
-                currentSelectedDay
-              )} a otros días?`
-            )
-          ) {
-            return;
-          }
-
-          // Crear selector de días destino
-          const daysToCopyTo = [];
-          for (let i = 0; i < 7; i++) {
-            if (i !== currentSelectedDay) {
-              daysToCopyTo.push(i);
-            }
-          }
-
-          // Copiar horarios a cada día seleccionado
-          daysToCopyTo.forEach((day) => {
-            saveTimesForDay(day, [...currentTimes]);
-          });
-
-          showMessage(
-            timesMessage,
-            `Horarios copiados del ${getDayName(
-              currentSelectedDay
-            )} a otros días`,
-            "success"
-          );
-        });
-
-        // Restablecer horarios por defecto
-        resetTimesButton.addEventListener("click", function () {
-          if (
-            !confirm(
-              "¿Estás seguro de que quieres restablecer los horarios a los valores por defecto? Esto afectará a todos los días."
-            )
-          ) {
-            return;
-          }
-
-          const defaultTimes = [
-            "09:00",
-            "09:30",
-            "10:00",
-            "10:30",
-            "11:00",
-            "11:30",
-            "12:00",
-            "12:30",
-            "13:00",
-            "13:30",
-            "14:00",
-            "14:30",
-            "15:00",
-            "15:30",
-            "16:00",
-            "16:30",
-            "17:00",
-            "17:30",
-          ];
-
-          // Aplicar a todos los días
-          for (let i = 0; i < 7; i++) {
-            saveTimesForDay(i, defaultTimes);
-          }
-
-          // Recargar los horarios del día actual
-          loadTimeSlotsForDay(currentSelectedDay);
-
-          showMessage(
-            timesMessage,
-            "Horarios restablecidos a valores por defecto",
-            "success"
-          );
-        });
-
-        // Guardar precio
-        savePriceButton.addEventListener("click", function () {
-          const price = servicePriceInput.value;
-          if (!price || isNaN(price) || price <= 0) {
-            showMessage(
-              priceMessage,
-              "Por favor ingresa un precio válido",
-              "error"
-            );
-            return;
-          }
-
-          localStorage.setItem("servicePrice", price);
-          showMessage(
-            priceMessage,
-            "Precio actualizado correctamente",
-            "success"
-          );
-        });
-
-        // Exportar datos
-        exportButton.addEventListener("click", function () {
-          const reservations = JSON.parse(
-            localStorage.getItem("reservations") || "[]"
-          );
-          const price = localStorage.getItem("servicePrice") || "No definido";
-          const unavailableDays =
-            localStorage.getItem("unavailableDays") || "[1]";
-
-          // Obtener todos los horarios por día
-          const availableTimesByDay = {};
-          for (let i = 0; i < 7; i++) {
-            availableTimesByDay[i] = getSavedTimesForDay(i);
-          }
-
-          const data = {
-            precio: price,
-            dias_no_disponibles: JSON.parse(unavailableDays),
-            horarios_por_dia: availableTimesByDay,
-            reservas: reservations,
-            exportDate: new Date().toLocaleString("es-ES"),
-          };
-
-          const dataStr = JSON.stringify(data, null, 2);
-          const dataUri =
-            "data:application/json;charset=utf-8," +
-            encodeURIComponent(dataStr);
-
-          const exportFileDefaultName = `reservas_lodeltirry_${
-            new Date().toISOString().split("T")[0]
-          }.json`;
-
-          const linkElement = document.createElement("a");
-          linkElement.setAttribute("href", dataUri);
-          linkElement.setAttribute("download", exportFileDefaultName);
-          linkElement.click();
-        });
-
-        // Eliminar todos los datos
-        clearButton.addEventListener("click", function () {
-          if (
-            confirm(
-              "¿Estás seguro de que quieres eliminar todos los datos? Esta acción no se puede deshacer."
-            )
-          ) {
-            localStorage.removeItem("reservations");
-            localStorage.removeItem("servicePrice");
-            // Mantener los lunes como no disponibles por defecto
-            localStorage.setItem("unavailableDays", "[1]");
-
-            // Eliminar todos los horarios guardados por día
-            for (let i = 0; i < 7; i++) {
-              localStorage.removeItem(`availableTimes_${i}`);
-            }
-
-            // Horarios por defecto: 9:00 a 17:30
-            const defaultTimes = [
-              "09:00",
-              "09:30",
-              "10:00",
-              "10:30",
-              "11:00",
-              "11:30",
-              "12:00",
-              "12:30",
-              "13:00",
-              "13:30",
-              "14:00",
-              "14:30",
-              "15:00",
-              "15:30",
-              "16:00",
-              "16:30",
-              "17:00",
-              "17:30",
-            ];
-
-            // Aplicar a todos los días
-            for (let i = 0; i < 7; i++) {
-              saveTimesForDay(i, defaultTimes);
-            }
-
-            loadReservations();
-            loadCurrentPrice();
-            loadUnavailableDays();
-            loadTimeSlotsForDay(currentSelectedDay);
-            alert("Todos los datos han sido eliminados.");
-          }
-        });
-
-        function loadCurrentPrice() {
-          const price = localStorage.getItem("servicePrice");
-          servicePriceInput.value = price || "";
+      async function loadReservations() {
+        try {
+          const reservations = await fetchReservations();
+          renderReservations(reservations);
+        } catch (err) {
+          console.error(err);
+          cleanMessage.textContent = "Error cargando reservas";
         }
+      }
 
-        function loadUnavailableDays() {
-          const unavailableDays = JSON.parse(
-            localStorage.getItem("unavailableDays") || "[1]"
-          );
-
-          // Deseleccionar todos primero
-          document.querySelectorAll(".day-option").forEach((option) => {
-            option.classList.remove("selected");
-          });
-
-          // Seleccionar los días guardados
-          unavailableDays.forEach((day) => {
-            document
-              .querySelector(`.day-option[data-day="${day}"]`)
-              .classList.add("selected");
-          });
-        }
-
-        function loadAvailableTimes() {
-          // Cargar horarios para el día actual
-          loadTimeSlotsForDay(currentSelectedDay);
-        }
-
-        function loadTimeSlotsForDay(day) {
-          // Obtener horarios guardados para este día
-          const savedTimes = getSavedTimesForDay(day);
-
-          // Generar opciones de horarios de 8:00 a 23:00
-          timeSlotsConfig.innerHTML = "";
-          for (let hour = 8; hour <= 23; hour++) {
-            for (let minute = 0; minute < 60; minute += 30) {
-              const formattedHour = hour.toString().padStart(2, "0");
-              const formattedMinute = minute.toString().padStart(2, "0");
-              const timeString = `${formattedHour}:${formattedMinute}`;
-
-              const timeOption = document.createElement("div");
-              timeOption.classList.add("time-slot-option");
-              timeOption.setAttribute("data-time", timeString);
-              timeOption.textContent = timeString;
-
-              // Marcar como seleccionado si está en la lista
-              if (savedTimes.includes(timeString)) {
-                timeOption.classList.add("selected");
-              }
-
-              timeOption.addEventListener("click", function () {
-                this.classList.toggle("selected");
-              });
-
-              timeSlotsConfig.appendChild(timeOption);
-            }
-          }
-        }
-
-        function getSavedTimesForDay(day) {
-          // Intentar obtener horarios específicos para este día
-          const dayTimes = localStorage.getItem(`availableTimes_${day}`);
-          if (dayTimes) {
-            return JSON.parse(dayTimes);
-          }
-
-          // Si no hay horarios específicos para este día, usar los globales (para compatibilidad)
-          const globalTimes = localStorage.getItem("availableTimes");
-          if (globalTimes) {
-            // Migrar datos antiguos a la nueva estructura
-            const times = JSON.parse(globalTimes);
-            saveTimesForDay(day, times);
-            localStorage.removeItem("availableTimes"); // Eliminar dato antiguo
-            return times;
-          }
-
-          // Valores por defecto si no hay nada guardado
-          return [
-            "09:00",
-            "09:30",
-            "10:00",
-            "10:30",
-            "11:00",
-            "11:30",
-            "12:00",
-            "12:30",
-            "13:00",
-            "13:30",
-            "14:00",
-            "14:30",
-            "15:00",
-            "15:30",
-            "16:00",
-            "16:30",
-            "17:00",
-            "17:30",
-          ];
-        }
-
-        function saveTimesForDay(day, times) {
-          localStorage.setItem(`availableTimes_${day}`, JSON.stringify(times));
-        }
-
-        function getSelectedTimesForDay(day) {
-          const selectedTimes = [];
-          document
-            .querySelectorAll(".time-slot-option.selected")
-            .forEach((option) => {
-              selectedTimes.push(option.getAttribute("data-time"));
-            });
-          return selectedTimes;
-        }
-
-        function saveCurrentDayTimes() {
-          const selectedTimes = getSelectedTimesForDay(currentSelectedDay);
-          saveTimesForDay(currentSelectedDay, selectedTimes);
-        }
-
-        function getDayName(dayIndex) {
-          const days = [
-            "Domingo",
-            "Lunes",
-            "Martes",
-            "Miércoles",
-            "Jueves",
-            "Viernes",
-            "Sábado",
-          ];
-          return days[dayIndex];
-        }
-
-        function loadReservations() {
-          const reservations = JSON.parse(
-            localStorage.getItem("reservations") || "[]"
-          );
-
-          // Actualizar estadísticas
-          updateStats(reservations);
-
-          // Mostrar reservas en tabla (para desktop)
-          if (reservations.length === 0) {
-            emptyState.style.display = "block";
-            reservationsTable.style.display = "none";
-          } else {
-            emptyState.style.display = "none";
-            reservationsTable.style.display = "table";
-
-            // Ordenar reservas por fecha (más recientes primero)
-            reservations.sort((a, b) => {
-              return (
-                new Date(b.date + "T" + b.time) -
-                new Date(a.date + "T" + a.time)
-              );
-            });
-
-            reservationsBody.innerHTML = "";
-            reservations.forEach((reservation, index) => {
-              const row = document.createElement("tr");
-              row.innerHTML = `
-                <td>${formatDate(reservation.date)}</td>
-                <td>${reservation.time}</td>
-                <td>${reservation.clientName}</td>
-                <td>${reservation.clientPhone}</td>
-                <td>${formatDateTime(reservation.reservationDate)}</td>
-                <td class="actions">
-                  <button class="btn btn-sm btn-danger" onclick="deleteReservation(${index})">
-                    <i class="fas fa-trash"></i> Eliminar
-                  </button>
-                </td>
-              `;
-              reservationsBody.appendChild(row);
-            });
-          }
-
-          // Mostrar reservas por día (para móvil y debajo del precio)
-          displayReservationsByDay(reservations);
-        }
-
-        function displayReservationsByDay(reservations) {
-          reservationsByDayContainer.innerHTML = "";
-
-          if (reservations.length === 0) {
-            reservationsByDayContainer.innerHTML = `
-              <div class="empty-state">
-                <i class="far fa-calendar-times"></i>
-                <h3>No hay reservas activas</h3>
-                <p>Todavía no se han realizado reservas en el sistema.</p>
-              </div>
-            `;
-            return;
-          }
-
-          // Agrupar reservas por día
-          const reservationsByDay = {};
-
-          reservations.forEach((reservation) => {
-            const date = new Date(reservation.date);
-            const dateStr = date.toISOString().split("T")[0];
-            const formattedDate = `${date.getDate()}/${
-              date.getMonth() + 1
-            }/${date.getFullYear()}`;
-
-            if (!reservationsByDay[dateStr]) {
-              reservationsByDay[dateStr] = {
-                formattedDate: formattedDate,
-                dateObj: date,
-                reservations: [],
-              };
-            }
-
-            reservationsByDay[dateStr].reservations.push(reservation);
-          });
-
-          // Ordenar días cronológicamente
-          const sortedDays = Object.keys(reservationsByDay).sort();
-
-          // Mostrar reservas por día
-          sortedDays.forEach((dayKey) => {
-            const dayData = reservationsByDay[dayKey];
-            const dayElement = document.createElement("div");
-            dayElement.classList.add("day-reservations");
-
-            dayElement.innerHTML = `
-              <div class="day-header">
-                <span class="day-title">${dayData.formattedDate}</span>
-                <span class="reservation-count">${dayData.reservations.length}</span>
-              </div>
-            `;
-
-            // Ordenar reservas del día por hora
-            dayData.reservations.sort((a, b) => {
-              const [aHour, aMinute] = a.time.split(":").map(Number);
-              const [bHour, bMinute] = b.time.split(":").map(Number);
-              return aHour - bHour || aMinute - bMinute;
-            });
-
-            // Añadir cada reserva del día
-            dayData.reservations.forEach((reservation, index) => {
-              const reservationElement = document.createElement("div");
-              reservationElement.classList.add("reservation-item");
-
-              reservationElement.innerHTML = `
-                <div class="reservation-info">
-                  <div class="reservation-time">${reservation.time}</div>
-                  <div class="reservation-client">${reservation.clientName} - ${reservation.clientPhone}</div>
-                </div>
-                <div class="reservation-actions">
-                  <button class="btn btn-danger btn-sm" onclick="deleteReservationByDateTime('${reservation.date}', '${reservation.time}')">
-                    <i class="fas fa-trash"></i>
-                  </button>
-                </div>
-              `;
-
-              dayElement.appendChild(reservationElement);
-            });
-
-            reservationsByDayContainer.appendChild(dayElement);
-          });
-        }
-
-        function updateStats(reservations) {
-          const today = new Date();
-          today.setHours(0, 0, 0, 0);
-
-          // Contar reservas de hoy
-          const todayReservations = reservations.filter((res) => {
-            const resDate = new Date(res.date);
-            resDate.setHours(0, 0, 0, 0);
-            return resDate.getTime() === today.getTime();
-          }).length;
-
-          // Contar reservas totales
-          const totalReservations = reservations.length;
-
-          // Próximas reservas (de hoy en adelante)
-          const upcomingReservations = reservations.filter((res) => {
-            const resDate = new Date(res.date);
-            return resDate >= today;
-          }).length;
-
-          statsContainer.innerHTML = `
-                    <div class="stat-card">
-                        <i class="fas fa-calendar-day"></i>
-                        <div class="stat-value">${todayReservations}</div>
-                        <div class="stat-label">Reservas Hoy</div>
-                    </div>
-                    <div class="stat-card">
-                        <i class="fas fa-calendar-week"></i>
-                        <div class="stat-value">${upcomingReservations}</div>
-                        <div class="stat-label">Próximas Reservas</div>
-                    </div>
-                    <div class="stat-card">
-                        <i class="fas fa-calendar-alt"></i>
-                        <div class="stat-value">${totalReservations}</div>
-                        <div class="stat-label">Total Reservas</div>
-                    </div>
-                `;
-        }
-
-        function formatDate(dateString) {
-          const date = new Date(dateString);
-          return `${date.getDate()}/${date.getMonth() + 1}/${date.getFullYear()}`;
-        }
-
-        function formatDateTime(dateTimeString) {
-          const date = new Date(dateTimeString);
-          return `${date.getDate()}/${date.getMonth() + 1}/${date.getFullYear()} ${date.getHours()}:${date.getMinutes().toString().padStart(2, "0")}`;
-        }
-
-        function showMessage(element, text, type) {
-          element.innerHTML = `<i class="fas fa-${
-            type === "success" ? "check-circle" : "exclamation-circle"
-          }"></i> ${text}`;
-          element.className = `message ${type}`;
-
-          // Ocultar mensaje después de 3 segundos
-          setTimeout(() => {
-            element.innerHTML = "";
-            element.className = "";
-          }, 3000);
-        }
-
-        // Hacer la función global para que pueda ser llamada desde los botones
-        window.deleteReservation = function (index) {
-          if (confirm("¿Estás seguro de que quieres eliminar esta reserva?")) {
-            const reservations = JSON.parse(
-              localStorage.getItem("reservations") || "[]"
-            );
-            reservations.splice(index, 1);
-            localStorage.setItem("reservations", JSON.stringify(reservations));
-            loadReservations();
-          }
-        };
-
-        // Función para eliminar reserva por fecha y hora (usada en la vista móvil)
-        window.deleteReservationByDateTime = function (dateString, timeString) {
-          if (confirm("¿Estás seguro de que quieres eliminar esta reserva?")) {
-            const reservations = JSON.parse(
-              localStorage.getItem("reservations") || "[]"
-            );
-
-            const updatedReservations = reservations.filter(
-              (res) => !(res.date === dateString && res.time === timeString)
-            );
-
-            localStorage.setItem(
-              "reservations",
-              JSON.stringify(updatedReservations)
-            );
-            loadReservations();
-          }
-        };
-      });
+      // --- Inicializar ---
+      loadReservations();
     </script>
   </body>
 </html>

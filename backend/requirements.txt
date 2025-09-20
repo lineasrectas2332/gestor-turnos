@@ -1,0 +1,8 @@
+fastapi
+uvicorn[standard]
+sqlmodel
+SQLAlchemy
+python-dotenv
+pydantic
+# opcional si vas a publicar con Postgres:
+psycopg2-binary

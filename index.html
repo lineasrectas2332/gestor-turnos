@@ -851,595 +851,120 @@
     </div>
 
     <script>
-      document.addEventListener("DOMContentLoaded", function () {
-        let currentDate = new Date();
-        let selectedDate = null;
-        let selectedTime = null;
-        let whatsappWindow = null;
-        let whatsappCheckInterval = null;
+      const reservationForm = document.getElementById("reservationForm");
+      const calendarEl = document.getElementById("calendar");
+      const timeSlotsContainer = document.getElementById("timeSlots");
+      const selectionMessage = document.getElementById("selectionMessage");
+      const clientModal = document.getElementById("clientModal");
+      const clientForm = document.getElementById("clientForm");
+      const closeModalBtn = document.querySelector(".close-btn");
 
-        const currentMonthElement = document.getElementById("current-month");
-        const calendarBody = document.getElementById("calendar-body");
-        const timeSlotsContainer = document.getElementById("time-slots");
-        const selectionMessage = document.getElementById("selection-message");
-        const confirmationSection = document.getElementById(
-          "confirmation-section"
-        );
-        const selectedInfo = document.getElementById("selected-info");
-        const prevMonthButton = document.getElementById("prev-month");
-        const nextMonthButton = document.getElementById("next-month");
-        const confirmButton = document.getElementById("btn-confirm");
-        const priceDisplay = document.getElementById("price-display");
+      let selectedDate = null;
+      let selectedTime = null;
 
+      const BACKEND_URL = "https://TU_BACKEND_URL/api"; // ⬅️ poné aquí tu URL de Render/Railway
+
+      // --- API helpers ---
+      async function fetchReservations() {
+        const res = await fetch(`${BACKEND_URL}/reservations`);
+        return await res.json();
+      }
+
+      async function createReservation(reservationObj) {
+        const res = await fetch(`${BACKEND_URL}/reservations`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(reservationObj),
+        });
+        if (!res.ok) throw new Error("Error creando reserva");
+        return await res.json();
+      }
+
+      // --- Calendar y slots ---
+      function generateCalendar() {
+        calendarEl.innerHTML = "";
         const today = new Date();
-        today.setHours(0, 0, 0, 0);
+        for (let i = 0; i < 7; i++) {
+          const d = new Date();
+          d.setDate(today.getDate() + i);
+          const btn = document.createElement("button");
+          btn.textContent = d.toLocaleDateString();
+          btn.onclick = () => selectDate(d);
+          calendarEl.appendChild(btn);
+        }
+      }
 
-        // Número fijo de WhatsApp para reservas
-        const whatsappNumber = "3534766211";
+      async function selectDate(date) {
+        selectedDate = date;
+        selectedTime = null;
+        await generateTimeSlots();
+        selectionMessage.textContent = `Seleccionaste el día ${date.toLocaleDateString()}`;
+      }
 
-        // Inicializar localStorage si no existe
-        if (!localStorage.getItem("reservations")) {
-          localStorage.setItem("reservations", JSON.stringify([]));
+      async function generateTimeSlots() {
+        timeSlotsContainer.innerHTML = "";
+        if (!selectedDate) return;
+
+        const reservations = await fetchReservations();
+        const reservedTimes = reservations
+          .filter(
+            (r) =>
+              new Date(r.date).toDateString() === selectedDate.toDateString()
+          )
+          .map((r) => r.time);
+
+        const availableTimes = ["10:00", "11:00", "12:00", "13:00", "14:00"];
+        availableTimes.forEach((time) => {
+          const btn = document.createElement("button");
+          btn.textContent = time;
+          btn.disabled = reservedTimes.includes(time);
+          btn.onclick = () => selectTime(time);
+          timeSlotsContainer.appendChild(btn);
+        });
+      }
+
+      function selectTime(time) {
+        selectedTime = time;
+        selectionMessage.textContent = `Seleccionaste ${selectedDate.toLocaleDateString()} a las ${time}`;
+        clientModal.style.display = "block";
+      }
+
+      // --- Modal ---
+      closeModalBtn.onclick = () => (clientModal.style.display = "none");
+
+      // --- Confirmar reserva ---
+      clientForm.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        if (!selectedDate || !selectedTime) {
+          alert("Selecciona fecha y hora primero");
+          return;
         }
 
-        if (!localStorage.getItem("servicePrice")) {
-          localStorage.setItem("servicePrice", "2500");
-        }
+        const clientName = document.getElementById("clientName").value;
+        const clientPhone = document.getElementById("clientPhone").value;
 
-        if (!localStorage.getItem("unavailableDays")) {
-          // Por defecto, los lunes (día 1) no están disponibles
-          localStorage.setItem("unavailableDays", JSON.stringify([1]));
-        }
-
-        // Inicializar sessionStorage para reservas pendientes
-        if (!sessionStorage.getItem("pendingReservations")) {
-          sessionStorage.setItem("pendingReservations", JSON.stringify([]));
-        }
-
-        // Actualizar visualización del precio
-        function updatePriceDisplay() {
-          const price = localStorage.getItem("servicePrice") || "2500";
-          priceDisplay.textContent = `Precio: $${price}`;
-        }
-
-        updatePriceDisplay();
-
-        // Obtener horarios disponibles configurados
-        function getAvailableTimes() {
-          return JSON.parse(
-            localStorage.getItem("availableTimes") ||
-              JSON.stringify([
-                "09:00",
-                "09:30",
-                "10:00",
-                "10:30",
-                "11:00",
-                "11:30",
-                "12:00",
-                "12:30",
-                "13:00",
-                "13:30",
-                "14:00",
-                "14:30",
-                "15:00",
-                "15:30",
-                "16:00",
-                "16:30",
-                "17:00",
-                "17:30",
-              ])
-          );
-        }
-
-        // Obtener días con reservas para el mes actual
-        function getReservedDaysForMonth() {
-          const reservations = JSON.parse(
-            localStorage.getItem("reservations") || "[]"
-          );
-          const reservedDays = [];
-
-          const currentYear = currentDate.getFullYear();
-          const currentMonth = currentDate.getMonth();
-
-          reservations.forEach((reservation) => {
-            const resDate = new Date(reservation.date);
-            if (
-              resDate.getFullYear() === currentYear &&
-              resDate.getMonth() === currentMonth
-            ) {
-              reservedDays.push(resDate.getDate());
-            }
-          });
-
-          return reservedDays;
-        }
-
-        // Obtener días con reservas pendientes para el mes actual
-        function getPendingDaysForMonth() {
-          const pendingReservations = JSON.parse(
-            sessionStorage.getItem("pendingReservations") || "[]"
-          );
-          const pendingDays = [];
-
-          const currentYear = currentDate.getFullYear();
-          const currentMonth = currentDate.getMonth();
-
-          pendingReservations.forEach((reservation) => {
-            const resDate = new Date(reservation.date);
-            if (
-              resDate.getFullYear() === currentYear &&
-              resDate.getMonth() === currentMonth
-            ) {
-              pendingDays.push(resDate.getDate());
-            }
-          });
-
-          return pendingDays;
-        }
-
-        // Obtener días no disponibles (cerrado)
-        function getUnavailableDays() {
-          return JSON.parse(localStorage.getItem("unavailableDays") || "[1]");
-        }
-
-        // Verificar si un día específico está disponible
-        function isDayAvailable(date) {
-          const dayOfWeek = date.getDay(); // 0 = Domingo, 1 = Lunes, etc.
-          const unavailableDays = getUnavailableDays();
-
-          // Si el día de la semana está en la lista de no disponibles
-          return !unavailableDays.includes(dayOfWeek);
-        }
-
-        // Función para verificar si un día está completamente reservado (ya no se usa)
-        function isDayFullyBooked(date, reservedDays) {
-          // Esta función ya no se usa, pero la dejamos por compatibilidad
-          return false;
-        }
-
-        function updateCalendar() {
-          const year = currentDate.getFullYear();
-          const month = currentDate.getMonth();
-
-          const monthNames = [
-            "Enero",
-            "Febrero",
-            "Marzo",
-            "Abril",
-            "Mayo",
-            "Junio",
-            "Julio",
-            "Agosto",
-            "Septiembre",
-            "Octuario",
-            "Noviembre",
-            "Diciembre",
-          ];
-          currentMonthElement.textContent = `${monthNames[month]} ${year}`;
-
-          calendarBody.innerHTML = "";
-
-          const firstDay = new Date(year, month, 1).getDay();
-          const daysInMonth = new Date(year, month + 1, 0).getDate();
-          const reservedDays = getReservedDaysForMonth();
-          const pendingDays = getPendingDaysForMonth();
-          const unavailableDays = getUnavailableDays();
-
-          let startDay = firstDay === 0 ? 6 : firstDay - 1;
-
-          let date = 1;
-          for (let i = 0; i < 6; i++) {
-            const row = document.createElement("tr");
-            for (let j = 0; j < 7; j++) {
-              const cell = document.createElement("td");
-              if (i === 0 && j < startDay) {
-                cell.classList.add("inactive");
-              } else if (date > daysInMonth) {
-                cell.classList.add("inactive");
-              } else {
-                const cellDate = new Date(year, month, date);
-                cellDate.setHours(0, 0, 0, 0);
-
-                const dayNumber = document.createElement("div");
-                dayNumber.classList.add("day-number");
-                dayNumber.textContent = date;
-
-                // Verificar si el día tiene reservas pendientes
-                if (pendingDays.includes(date)) {
-                  cell.classList.add("pending-day");
-                }
-
-                // Verificar si el día no está disponible (cerrado)
-                const dayOfWeek = cellDate.getDay(); // 0 = Domingo, 1 = Lunes, etc.
-                if (unavailableDays.includes(dayOfWeek)) {
-                  cell.classList.add("unavailable-day");
-                }
-
-                if (cellDate.getTime() === today.getTime()) {
-                  cell.classList.add("today");
-                }
-
-                if (cellDate < today) {
-                  cell.classList.add("past");
-                }
-
-                if (
-                  selectedDate &&
-                  cellDate.getTime() === selectedDate.getTime()
-                ) {
-                  cell.classList.add("active");
-                }
-
-                cell.appendChild(dayNumber);
-
-                // Solo permitir clic si el día está disponible y no está en el pasado
-                if (cellDate >= today && isDayAvailable(cellDate)) {
-                  cell.addEventListener("click", function () {
-                    selectDate(cellDate);
-                  });
-                } else {
-                  cell.style.cursor = "not-allowed";
-                }
-
-                date++;
-              }
-              row.appendChild(cell);
-            }
-            calendarBody.appendChild(row);
-            if (date > daysInMonth) break;
-          }
-        }
-
-        function selectDate(date) {
-          date.setHours(0, 0, 0, 0);
-          if (date < today) {
-            selectionMessage.innerHTML = `<i class="fas fa-exclamation-circle"></i> No puedes seleccionar una fecha pasada`;
-            selectionMessage.className = "message error";
-            return;
-          }
-
-          // Verificar si el día está disponible
-          if (!isDayAvailable(date)) {
-            selectionMessage.innerHTML = `<i class="fas fa-exclamation-circle"></i> Este día no está disponible para reservas`;
-            selectionMessage.className = "message error";
-            return;
-          }
-
-          selectedDate = date;
-          selectedTime = null;
-
-          selectionMessage.innerHTML = `<i class="fas fa-check-circle"></i> Has seleccionado el ${formatSelectedDate()}. Ahora elige un horario`;
-          selectionMessage.className = "message info";
-
-          updateCalendar();
-          generateTimeSlots();
-          confirmationSection.style.display = "none";
-        }
-
-        function generateTimeSlots() {
-          timeSlotsContainer.innerHTML = "";
-
-          if (!selectedDate) {
-            selectionMessage.innerHTML = `<i class="fas fa-info-circle"></i> Selecciona una fecha para ver los horarios disponibles`;
-            return;
-          }
-
-          const isToday = selectedDate.getTime() === today.getTime();
-          const now = new Date();
-          const currentHour = now.getHours();
-          const currentMinute = now.getMinutes();
-
-          // Obtener reservas existentes
-          const reservations = JSON.parse(
-            localStorage.getItem("reservations") || "[]"
-          );
-          const pendingReservations = JSON.parse(
-            sessionStorage.getItem("pendingReservations") || "[]"
-          );
-          const selectedDateStr = selectedDate.toISOString().split("T")[0];
-
-          // Obtener horarios configurados
-          const availableTimes = getAvailableTimes();
-
-          // Generar solo los horarios configurados
-          availableTimes.forEach((timeString) => {
-            const timeSlot = document.createElement("div");
-            timeSlot.textContent = timeString;
-            timeSlot.setAttribute("data-time", timeString);
-
-            // Verificar si este horario ya está reservado
-            const isReserved = reservations.some((res) => {
-              const resDate = new Date(res.date);
-              const resDateStr = resDate.toISOString().split("T")[0];
-              return resDateStr === selectedDateStr && res.time === timeString;
-            });
-
-            // Verificar si este horario tiene una reserva pendiente
-            const isPending = pendingReservations.some((res) => {
-              const resDate = new Date(res.date);
-              const resDateStr = resDate.toISOString().split("T")[0];
-              return resDateStr === selectedDateStr && res.time === timeString;
-            });
-
-            if (isReserved) {
-              timeSlot.classList.add("time-slot", "reserved");
-              timeSlotsContainer.appendChild(timeSlot);
-              return;
-            }
-
-            if (isPending) {
-              timeSlot.classList.add("time-slot", "pending");
-              timeSlotsContainer.appendChild(timeSlot);
-              return;
-            }
-
-            // Verificar si el horario ya pasó (solo para hoy)
-            const [hourStr, minuteStr] = timeString.split(":");
-            const hour = parseInt(hourStr);
-            const minute = parseInt(minuteStr);
-
-            if (
-              isToday &&
-              (hour < currentHour ||
-                (hour === currentHour && minute < currentMinute))
-            ) {
-              timeSlot.classList.add("time-slot", "disabled");
-              timeSlotsContainer.appendChild(timeSlot);
-              return;
-            }
-
-            timeSlot.classList.add("time-slot");
-            timeSlot.addEventListener("click", function () {
-              document
-                .querySelectorAll(".time-slot.selected")
-                .forEach((slot) => slot.classList.remove("selected"));
-              timeSlot.classList.add("selected");
-              selectedTime = timeSlot.getAttribute("data-time");
-
-              selectionMessage.innerHTML = `<i class="fas fa-check-circle"></i> Has seleccionado el ${formatSelectedDate()} a las ${selectedTime}`;
-              selectionMessage.className = "message info";
-
-              confirmationSection.style.display = "block";
-              updateSelectedInfo();
-            });
-            timeSlotsContainer.appendChild(timeSlot);
-          });
-        }
-
-        function formatSelectedDate() {
-          const day = selectedDate.getDate();
-          const month = selectedDate.getMonth() + 1;
-          const year = selectedDate.getFullYear();
-          return `${day}/${month}/${year}`;
-        }
-
-        function formatSelectedDateLong() {
-          const day = selectedDate.getDate();
-          const monthNames = [
-            "Enero",
-            "Febrero",
-            "Marzo",
-            "Abril",
-            "Mayo",
-            "Junio",
-            "Julio",
-            "Agosto",
-            "Septiembre",
-            "Octubre",
-            "Noviembre",
-            "Diciembre",
-          ];
-          const monthName = monthNames[selectedDate.getMonth()];
-          const year = selectedDate.getFullYear();
-          return `${day} de ${monthName} de ${year}`;
-        }
-
-        function updateSelectedInfo() {
-          selectedInfo.innerHTML = `
-          <div class="selected-date"><i class="far fa-calendar-alt"></i><span>${formatSelectedDate()}</span></div>
-          <div class="selected-time"><i class="far fa-clock"></i><span>${selectedTime}</span></div>
-        `;
-        }
-
-        // Función para guardar la reserva como pendiente
-        function savePendingReservation(clientName, clientPhone, date, time) {
-          const reservation = {
-            clientName,
-            clientPhone,
-            date: date.toISOString(),
-            time,
-            reservationDate: new Date().toISOString(),
-            status: "pending",
-          };
-
-          // Obtener reservas pendientes existentes
-          const existingPendingReservations = JSON.parse(
-            sessionStorage.getItem("pendingReservations") || "[]"
-          );
-
-          // Agregar nueva reserva pendiente
-          existingPendingReservations.push(reservation);
-
-          // Guardar en sessionStorage
-          sessionStorage.setItem(
-            "pendingReservations",
-            JSON.stringify(existingPendingReservations)
-          );
-
-          return true;
-        }
-
-        // Función para confirmar una reserva pendiente
-        function confirmPendingReservation(
+        const reservation = {
           clientName,
-          clientPhone,
-          date,
-          time
-        ) {
-          // Eliminar de pendientes
-          const pendingReservations = JSON.parse(
-            sessionStorage.getItem("pendingReservations") || "[]"
-          );
+          phone: clientPhone,
+          date: selectedDate.toISOString(),
+          time: selectedTime,
+          reservationDate: new Date().toISOString(),
+          status: "confirmed",
+        };
 
-          const updatedPendingReservations = pendingReservations.filter(
-            (res) =>
-              !(
-                res.clientName === clientName &&
-                res.clientPhone === clientPhone &&
-                new Date(res.date).getTime() === date.getTime() &&
-                res.time === time
-              )
-          );
-
-          sessionStorage.setItem(
-            "pendingReservations",
-            JSON.stringify(updatedPendingReservations)
-          );
-
-          // Guardar en reservas confirmadas
-          const reservation = {
-            clientName,
-            clientPhone,
-            date: date.toISOString(),
-            time,
-            reservationDate: new Date().toISOString(),
-            status: "confirmed",
-          };
-
-          const existingReservations = JSON.parse(
-            localStorage.getItem("reservations") || "[]"
-          );
-
-          existingReservations.push(reservation);
-
-          localStorage.setItem(
-            "reservations",
-            JSON.stringify(existingReservations)
-          );
-
-          return true;
+        try {
+          await createReservation(reservation);
+          selectionMessage.textContent = "¡Reserva confirmada!";
+          clientModal.style.display = "none";
+          generateTimeSlots();
+        } catch (err) {
+          console.error(err);
+          alert("Error creando la reserva");
         }
-
-        // Verificar si la ventana de WhatsApp se abrió correctamente
-        function checkWhatsAppWindow() {
-          if (whatsappWindow && whatsappWindow.closed) {
-            // La ventana de WhatsApp se cerró, asumimos que el mensaje fue enviado
-            clearInterval(whatsappCheckInterval);
-
-            const clientName = document.getElementById("client-name").value;
-            const clientPhone = document.getElementById("client-phone").value;
-
-            if (
-              confirmPendingReservation(
-                clientName,
-                clientPhone,
-                selectedDate,
-                selectedTime
-              )
-            ) {
-              // Mostrar mensaje de éxito
-              selectionMessage.innerHTML = `<i class="fas fa-check-circle"></i> ¡Reserva confirmada para el ${formatSelectedDate()} a las ${selectedTime}!`;
-              selectionMessage.className = "message success";
-
-              // Limpiar el formulario después de enviar
-              document.getElementById("client-name").value = "";
-              document.getElementById("client-phone").value = "";
-              confirmationSection.style.display = "none";
-
-              // Actualizar los horarios disponibles
-              generateTimeSlots();
-              // Actualizar el calendario
-              updateCalendar();
-            }
-          } else if (!whatsappWindow || whatsappWindow.closed) {
-            // La ventana nunca se abrió o fue cerrada
-            clearInterval(whatsappCheckInterval);
-          }
-        }
-
-        confirmButton.addEventListener("click", function () {
-          const clientName = document.getElementById("client-name").value;
-          const clientPhone = document.getElementById("client-phone").value;
-
-          if (!clientName || !clientPhone) {
-            alert("Por favor, completa todos los campos");
-            return;
-          }
-
-          const price = localStorage.getItem("servicePrice") || "2500";
-
-          // Mensaje mejorado con todos los detalles
-          const message = `¡Hola! Me gustaría reservar un turno en #lodeltirry 🎨✂️
-
-📅 *Fecha:* ${formatSelectedDateLong()}
-⏰ *Hora:* ${selectedTime} hs
-👤 *Nombre:* ${clientName}
-📞 *Teléfono:* ${clientPhone}
-💵 *Precio:* $${price}
-
-Por favor, confirmame la disponibilidad de este turno. ¡Gracias!`;
-
-          const encodedMessage = encodeURIComponent(message);
-          const whatsappURL = `https://wa.me/549${whatsappNumber}?text=${encodedMessage}`;
-
-          // Guardar la reserva como pendiente
-          if (
-            savePendingReservation(
-              clientName,
-              clientPhone,
-              selectedDate,
-              selectedTime
-            )
-          ) {
-            // Abrir WhatsApp en una nueva ventana
-            whatsappWindow = window.open(whatsappURL, "_blank");
-
-            // Mostrar mensaje de advertencia
-            selectionMessage.innerHTML = `<i class="fas fa-exclamation-circle"></i> ¡Por favor envía el mensaje de WhatsApp para confirmar tu reserva!`;
-            selectionMessage.className = "message warning";
-
-            // Verificar si la ventana se abrió correctamente (no bloqueada por popup blocker)
-            if (whatsappWindow) {
-              // Iniciar verificación periódica del estado de la ventana
-              whatsappCheckInterval = setInterval(checkWhatsAppWindow, 1000);
-            } else {
-              // Popup bloqueado, mostrar instrucciones
-              selectionMessage.innerHTML = `<i class="fas fa-exclamation-circle"></i> ¡Permite ventanas emergentes para completar tu reserva!`;
-              selectionMessage.className = "message error";
-
-              // Mostrar instrucciones adicionales
-              setTimeout(() => {
-                alert(
-                  "Para completar tu reserva, por favor permite ventanas emergentes en tu navegador y haz clic en el botón de WhatsApp nuevamente. O envía un mensaje manualmente al número: 3534766211"
-                );
-              }, 500);
-            }
-          }
-        });
-
-        prevMonthButton.addEventListener("click", function () {
-          currentDate.setMonth(currentDate.getMonth() - 1);
-          updateCalendar();
-          resetSelection();
-        });
-
-        nextMonthButton.addEventListener("click", function () {
-          currentDate.setMonth(currentDate.getMonth() + 1);
-          updateCalendar();
-          resetSelection();
-        });
-
-        function resetSelection() {
-          selectedDate = null;
-          selectedTime = null;
-          timeSlotsContainer.innerHTML = "";
-          confirmationSection.style.display = "none";
-          selectionMessage.innerHTML = `<i class="fas fa-info-circle"></i> Selecciona una fecha para ver los horarios disponibles`;
-          selectionMessage.className = "message info";
-        }
-
-        updateCalendar();
       });
+
+      // --- Inicializar ---
+      generateCalendar();
     </script>
   </body>
 </html>
