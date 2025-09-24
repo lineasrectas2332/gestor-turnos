@@ -37,6 +37,10 @@ app.add_middleware(
 def on_startup():
     create_db_and_tables()
 
+@app.get("/health")
+def health_check():
+    return {"status": "ok", "message": "API funcionando correctamente"}
+
 @app.get("/api/reservations", response_model=List[Reservation])
 def list_reservations():
     with Session(engine) as session:
