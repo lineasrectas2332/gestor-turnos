@@ -10,28 +10,28 @@
     />
     <style>
       :root {
-        --primary: #36494e; /* Espacio exterior */
-        --primary-dark: #597081; /* Gris de Payne */
-        --secondary: #7ea0b7; /* Superioridad aérea azul */
-        --light: #a9cef4; /* Azul uraniano */
-        --lighter: #f0f7ff; /* Fondo claro azulado */
+        --primary: #36494e;
+        --primary-dark: #597081;
+        --secondary: #7ea0b7;
+        --light: #a9cef4;
+        --lighter: #f0f7ff;
         --gray: #9e9e9e;
         --light-gray: #d1d5db;
-        --background: #f8fafc; /* Fondo general */
-        --surface: #ffffff; /* Superficie */
-        --card: #ffffff; /* Tarjetas */
-        --hover: #7ea0b7; /* Hover azul intermedio */
-        --success: #10b981; /* Verde éxito */
-        --error: #ef4444; /* Rojo error */
-        --text: #000000; /* Texto principal */
-        --text-light: #4b5563; /* Texto secundario */
-        --unavailable: #f51b0b; /* Naranja no disponible */
-        --pending: #f59e0b; /* Naranja pendiente */
-        --accent: #a9cef4; /* Acento azul claro */
-        --border: #e5e7eb; /* Bordes */
-        --focus: #a9cef4; /* Focus rings */
-        --section-border: #7ea0b7; /* Borde de secciones */
-        --time-slot-bg: #e6f0ff; /* Fondo de horarios */
+        --background: #f8fafc;
+        --surface: #ffffff;
+        --card: #ffffff;
+        --hover: #7ea0b7;
+        --success: #10b981;
+        --error: #ef4444;
+        --text: #000000;
+        --text-light: #4b5563;
+        --unavailable: #f51b0b;
+        --pending: #f59e0b;
+        --accent: #a9cef4;
+        --border: #e5e7eb;
+        --focus: #a9cef4;
+        --section-border: #7ea0b7;
+        --time-slot-bg: #e6f0ff;
       }
 
       * {
@@ -152,6 +152,7 @@
         color: var(--primary);
         text-align: center;
         flex-grow: 1;
+        min-width: 200px;
       }
 
       .calendar {
@@ -755,6 +756,22 @@
       .pulse {
         animation: pulse 2s infinite;
       }
+
+      .loading {
+        display: inline-block;
+        width: 20px;
+        height: 20px;
+        border: 3px solid rgba(255, 255, 255, 0.3);
+        border-radius: 50%;
+        border-top-color: #fff;
+        animation: spin 1s ease-in-out infinite;
+      }
+
+      @keyframes spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
     </style>
   </head>
   <body>
@@ -816,7 +833,9 @@
           <div class="selected-info" id="selected-info"></div>
 
           <div class="form-group">
-            <label for="client-name">Nombre completo</label>
+            <label for="client-name"
+              ><i class="fas fa-user"></i>Nombre completo</label
+            >
             <input
               type="text"
               id="client-name"
@@ -825,7 +844,9 @@
           </div>
 
           <div class="form-group">
-            <label for="client-phone">Número de teléfono</label>
+            <label for="client-phone"
+              ><i class="fas fa-phone"></i>Número de teléfono</label
+            >
             <input
               type="tel"
               id="client-phone"
@@ -851,120 +872,461 @@
     </div>
 
     <script>
-      const reservationForm = document.getElementById("reservationForm");
-      const calendarEl = document.getElementById("calendar");
-      const timeSlotsContainer = document.getElementById("timeSlots");
-      const selectionMessage = document.getElementById("selectionMessage");
-      const clientModal = document.getElementById("clientModal");
-      const clientForm = document.getElementById("clientForm");
-      const closeModalBtn = document.querySelector(".close-btn");
+      // Elementos del DOM
+      const calendarBody = document.getElementById("calendar-body");
+      const timeSlotsContainer = document.getElementById("time-slots");
+      const selectionMessage = document.getElementById("selection-message");
+      const confirmationSection = document.getElementById(
+        "confirmation-section"
+      );
+      const selectedInfo = document.getElementById("selected-info");
+      const clientNameInput = document.getElementById("client-name");
+      const clientPhoneInput = document.getElementById("client-phone");
+      const btnConfirm = document.getElementById("btn-confirm");
+      const prevMonthBtn = document.getElementById("prev-month");
+      const nextMonthBtn = document.getElementById("next-month");
+      const currentMonthEl = document.getElementById("current-month");
+      const priceDisplay = document.getElementById("price-display");
 
+      // Variables de estado
       let selectedDate = null;
       let selectedTime = null;
+      let currentDate = new Date();
+      let currentMonth = currentDate.getMonth();
+      let currentYear = currentDate.getFullYear();
 
-      const BACKEND_URL = "https://gestor-turnos-yv0m.onrender.com"; // ⬅️ poné aquí tu URL de Render/Railway
+      const BACKEND_URL = "https://gestor-turnos-yv0m.onrender.com";
+      let useBackend = true; // Variable para controlar si usamos el backend o localStorage
 
-      // --- API helpers ---
-      async function fetchReservations() {
-        const res = await fetch(`${BACKEND_URL}/reservations`);
-        return await res.json();
-      }
+      // Inicialización
+      document.addEventListener("DOMContentLoaded", () => {
+        generateCalendar(currentMonth, currentYear);
+        setupEventListeners();
+        checkBackendConnection();
+      });
 
-      async function createReservation(reservationObj) {
-        const res = await fetch(`${BACKEND_URL}/reservations`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(reservationObj),
-        });
-        if (!res.ok) throw new Error("Error creando reserva");
-        return await res.json();
-      }
+      // Verificar conexión con el backend
+      async function checkBackendConnection() {
+        try {
+          const response = await fetch(`${BACKEND_URL}/health`, {
+            method: "GET",
+            headers: {
+              "Content-Type": "application/json",
+            },
+          });
 
-      // --- Calendar y slots ---
-      function generateCalendar() {
-        calendarEl.innerHTML = "";
-        const today = new Date();
-        for (let i = 0; i < 7; i++) {
-          const d = new Date();
-          d.setDate(today.getDate() + i);
-          const btn = document.createElement("button");
-          btn.textContent = d.toLocaleDateString();
-          btn.onclick = () => selectDate(d);
-          calendarEl.appendChild(btn);
+          if (response.ok) {
+            console.log("Conexión con el backend establecida");
+            useBackend = true;
+          } else {
+            console.error("Error en la conexión con el backend");
+            useBackend = false;
+            selectionMessage.textContent =
+              "Modo local activado. Las reservas se guardarán localmente.";
+            selectionMessage.className = "message warning";
+          }
+        } catch (error) {
+          console.error("Error conectando con el backend:", error);
+          useBackend = false;
+          selectionMessage.textContent =
+            "Modo local activado. Las reservas se guardarán localmente.";
+          selectionMessage.className = "message warning";
         }
       }
 
+      // Configurar event listeners
+      function setupEventListeners() {
+        prevMonthBtn.addEventListener("click", () => {
+          currentMonth--;
+          if (currentMonth < 0) {
+            currentMonth = 11;
+            currentYear--;
+          }
+          generateCalendar(currentMonth, currentYear);
+        });
+
+        nextMonthBtn.addEventListener("click", () => {
+          currentMonth++;
+          if (currentMonth > 11) {
+            currentMonth = 0;
+            currentYear++;
+          }
+          generateCalendar(currentMonth, currentYear);
+        });
+
+        btnConfirm.addEventListener("click", confirmReservation);
+      }
+
+      // Generar calendario
+      function generateCalendar(month, year) {
+        calendarBody.innerHTML = "";
+        currentMonthEl.textContent = `${getMonthName(month)} ${year}`;
+
+        const firstDay = new Date(year, month, 1);
+        const lastDay = new Date(year, month + 1, 0);
+        const daysInMonth = lastDay.getDate();
+        const startingDay = firstDay.getDay() === 0 ? 6 : firstDay.getDay() - 1; // Ajuste para que la semana empiece en lunes
+
+        let date = 1;
+
+        for (let i = 0; i < 6; i++) {
+          const row = document.createElement("tr");
+
+          for (let j = 0; j < 7; j++) {
+            const cell = document.createElement("td");
+
+            if (i === 0 && j < startingDay) {
+              // Días del mes anterior
+              cell.classList.add("inactive");
+              const prevMonthDays = new Date(year, month, 0).getDate();
+              cell.innerHTML = `<span class="day-number">${
+                prevMonthDays - (startingDay - j - 1)
+              }</span>`;
+            } else if (date > daysInMonth) {
+              // Días del mes siguiente
+              cell.classList.add("inactive");
+              cell.innerHTML = `<span class="day-number">${
+                date - daysInMonth
+              }</span>`;
+              date++;
+            } else {
+              // Días del mes actual
+              const cellDate = new Date(year, month, date);
+
+              // Verificar si es hoy
+              const today = new Date();
+              if (
+                cellDate.getDate() === today.getDate() &&
+                cellDate.getMonth() === today.getMonth() &&
+                cellDate.getFullYear() === today.getFullYear()
+              ) {
+                cell.classList.add("today");
+              }
+
+              // Verificar si es una fecha pasada
+              if (
+                cellDate <
+                new Date(today.getFullYear(), today.getMonth(), today.getDate())
+              ) {
+                cell.classList.add("past");
+              }
+
+              cell.innerHTML = `<span class="day-number">${date}</span>`;
+
+              // Solo agregar evento de clic si no es una fecha pasada
+              if (
+                !cell.classList.contains("past") &&
+                !cell.classList.contains("inactive")
+              ) {
+                cell.addEventListener("click", () => selectDate(cellDate));
+              }
+
+              date++;
+            }
+
+            row.appendChild(cell);
+          }
+
+          calendarBody.appendChild(row);
+        }
+      }
+
+      // Obtener nombre del mes
+      function getMonthName(month) {
+        const months = [
+          "Enero",
+          "Febrero",
+          "Marzo",
+          "Abril",
+          "Mayo",
+          "Junio",
+          "Julio",
+          "Agosto",
+          "Septiembre",
+          "Octubre",
+          "Noviembre",
+          "Diciembre",
+        ];
+        return months[month];
+      }
+
+      // Seleccionar fecha
       async function selectDate(date) {
         selectedDate = date;
         selectedTime = null;
-        await generateTimeSlots();
-        selectionMessage.textContent = `Seleccionaste el día ${date.toLocaleDateString()}`;
-      }
 
-      async function generateTimeSlots() {
-        timeSlotsContainer.innerHTML = "";
-        if (!selectedDate) return;
+        // Limpiar selección previa
+        const allCells = calendarBody.querySelectorAll("td");
+        allCells.forEach((cell) => cell.classList.remove("active"));
 
-        const reservations = await fetchReservations();
-        const reservedTimes = reservations
-          .filter(
-            (r) =>
-              new Date(r.date).toDateString() === selectedDate.toDateString()
-          )
-          .map((r) => r.time);
-
-        const availableTimes = ["10:00", "11:00", "12:00", "13:00", "14:00"];
-        availableTimes.forEach((time) => {
-          const btn = document.createElement("button");
-          btn.textContent = time;
-          btn.disabled = reservedTimes.includes(time);
-          btn.onclick = () => selectTime(time);
-          timeSlotsContainer.appendChild(btn);
+        // Resaltar celda seleccionada
+        const day = date.getDate();
+        const cells = calendarBody.querySelectorAll("td");
+        cells.forEach((cell) => {
+          if (
+            parseInt(cell.textContent) === day &&
+            !cell.classList.contains("inactive")
+          ) {
+            cell.classList.add("active");
+          }
         });
+
+        selectionMessage.textContent = `Seleccionaste el día ${formatDate(
+          date
+        )}`;
+        selectionMessage.className = "message info";
+
+        await generateTimeSlots(date);
+        confirmationSection.style.display = "none";
       }
 
+      // Generar slots de tiempo
+      async function generateTimeSlots(date) {
+        timeSlotsContainer.innerHTML = "";
+
+        try {
+          let reservedTimes = [];
+
+          if (useBackend) {
+            // Intentar obtener reservas del backend
+            try {
+              const reservations = await fetchReservations();
+              reservedTimes = reservations
+                .filter((r) => {
+                  const reservationDate = new Date(r.date);
+                  return reservationDate.toDateString() === date.toDateString();
+                })
+                .map((r) => r.time);
+            } catch (error) {
+              console.error("Error obteniendo reservas del backend:", error);
+              // Si falla, usar localStorage
+              useBackend = false;
+              selectionMessage.textContent =
+                "Modo local activado. Las reservas se guardarán localmente.";
+              selectionMessage.className = "message warning";
+            }
+          }
+
+          // Si no estamos usando backend, obtener de localStorage
+          if (!useBackend) {
+            const localReservations = JSON.parse(
+              localStorage.getItem("reservations") || "[]"
+            );
+            reservedTimes = localReservations
+              .filter((r) => {
+                const reservationDate = new Date(r.date);
+                return reservationDate.toDateString() === date.toDateString();
+              })
+              .map((r) => r.time);
+          }
+
+          // Horarios disponibles (de 8:00 a 19:00 cada 30 minutos)
+          const availableTimes = [];
+          for (let hour = 8; hour <= 19; hour++) {
+            availableTimes.push(`${hour}:00`);
+            if (hour < 19) availableTimes.push(`${hour}:30`);
+          }
+
+          availableTimes.forEach((time) => {
+            const timeSlot = document.createElement("div");
+            timeSlot.classList.add("time-slot");
+
+            if (reservedTimes.includes(time)) {
+              timeSlot.classList.add("reserved");
+              timeSlot.textContent = time;
+            } else {
+              timeSlot.textContent = time;
+              timeSlot.addEventListener("click", () => selectTime(time));
+            }
+
+            timeSlotsContainer.appendChild(timeSlot);
+          });
+        } catch (error) {
+          selectionMessage.textContent =
+            "Error al cargar los horarios. Intenta nuevamente.";
+          selectionMessage.className = "message error";
+          console.error("Error:", error);
+        }
+      }
+
+      // Seleccionar hora
       function selectTime(time) {
         selectedTime = time;
-        selectionMessage.textContent = `Seleccionaste ${selectedDate.toLocaleDateString()} a las ${time}`;
-        clientModal.style.display = "block";
+
+        // Limpiar selección previa
+        const allTimeSlots = timeSlotsContainer.querySelectorAll(".time-slot");
+        allTimeSlots.forEach((slot) => slot.classList.remove("selected"));
+
+        // Resaltar slot seleccionado
+        allTimeSlots.forEach((slot) => {
+          if (
+            slot.textContent === time &&
+            !slot.classList.contains("reserved")
+          ) {
+            slot.classList.add("selected");
+          }
+        });
+
+        selectionMessage.textContent = `Seleccionaste el ${formatDate(
+          selectedDate
+        )} a las ${selectedTime}`;
+        selectionMessage.className = "message info";
+
+        showConfirmationSection();
       }
 
-      // --- Modal ---
-      closeModalBtn.onclick = () => (clientModal.style.display = "none");
+      // Mostrar sección de confirmación
+      function showConfirmationSection() {
+        selectedInfo.innerHTML = `
+          <div class="selected-date">
+            <i class="far fa-calendar"></i>
+            <span>${formatDate(selectedDate)}</span>
+          </div>
+          <div class="selected-time">
+            <i class="far fa-clock"></i>
+            <span>${selectedTime}</span>
+          </div>
+        `;
 
-      // --- Confirmar reserva ---
-      clientForm.addEventListener("submit", async (e) => {
-        e.preventDefault();
-        if (!selectedDate || !selectedTime) {
-          alert("Selecciona fecha y hora primero");
+        confirmationSection.style.display = "block";
+      }
+
+      // Confirmar reserva
+      async function confirmReservation() {
+        const clientName = clientNameInput.value.trim();
+        const clientPhone = clientPhoneInput.value.trim();
+
+        if (!clientName || !clientPhone) {
+          selectionMessage.textContent =
+            "Por favor, completa todos los campos.";
+          selectionMessage.className = "message error";
           return;
         }
 
-        const clientName = document.getElementById("clientName").value;
-        const clientPhone = document.getElementById("clientPhone").value;
+        if (!selectedDate || !selectedTime) {
+          selectionMessage.textContent =
+            "Por favor, selecciona una fecha y hora.";
+          selectionMessage.className = "message error";
+          return;
+        }
 
-        const reservation = {
-          clientName,
-          phone: clientPhone,
-          date: selectedDate.toISOString(),
-          time: selectedTime,
-          reservationDate: new Date().toISOString(),
-          status: "confirmed",
-        };
+        // Mostrar estado de carga
+        btnConfirm.innerHTML = '<div class="loading"></div> Procesando...';
+        btnConfirm.disabled = true;
 
         try {
-          await createReservation(reservation);
-          selectionMessage.textContent = "¡Reserva confirmada!";
-          clientModal.style.display = "none";
-          generateTimeSlots();
-        } catch (err) {
-          console.error(err);
-          alert("Error creando la reserva");
-        }
-      });
+          // Crear objeto de reserva
+          const reservation = {
+            clientName,
+            phone: clientPhone,
+            date: selectedDate.toISOString(),
+            time: selectedTime,
+            reservationDate: new Date().toISOString(),
+            status: "pending",
+          };
 
-      // --- Inicializar ---
-      generateCalendar();
+          // Enviar reserva al backend o guardar localmente
+          if (useBackend) {
+            try {
+              await createReservation(reservation);
+            } catch (error) {
+              console.error("Error creando reserva en backend:", error);
+              // Si falla, guardar en localStorage
+              saveReservationLocal(reservation);
+              useBackend = false;
+              selectionMessage.textContent =
+                "Modo local activado. Las reservas se guardarán localmente.";
+              selectionMessage.className = "message warning";
+            }
+          } else {
+            saveReservationLocal(reservation);
+          }
+
+          // Preparar mensaje de WhatsApp
+          const whatsappMessage = `Hola, me gustaría reservar un turno para el ${formatDate(
+            selectedDate
+          )} a las ${selectedTime}. Mi nombre es ${clientName}.`;
+          const encodedMessage = encodeURIComponent(whatsappMessage);
+          const whatsappURL = `https://wa.me/3534766211?text=${encodedMessage}`;
+
+          // Abrir WhatsApp
+          window.open(whatsappURL, "_blank");
+
+          // Mostrar mensaje de éxito
+          selectionMessage.textContent =
+            "¡Reserva realizada con éxito! Por favor, confirma mediante WhatsApp.";
+          selectionMessage.className = "message success";
+
+          // Limpiar formulario
+          clientNameInput.value = "";
+          clientPhoneInput.value = "";
+          confirmationSection.style.display = "none";
+
+          // Actualizar slots de tiempo
+          await generateTimeSlots(selectedDate);
+        } catch (error) {
+          selectionMessage.textContent =
+            "Error al crear la reserva. Intenta nuevamente.";
+          selectionMessage.className = "message error";
+          console.error("Error:", error);
+        } finally {
+          // Restaurar botón
+          btnConfirm.innerHTML =
+            '<i class="fab fa-whatsapp"></i> Enviar confirmación por WhatsApp';
+          btnConfirm.disabled = false;
+        }
+      }
+
+      // Guardar reserva localmente
+      function saveReservationLocal(reservation) {
+        const reservations = JSON.parse(
+          localStorage.getItem("reservations") || "[]"
+        );
+        reservations.push(reservation);
+        localStorage.setItem("reservations", JSON.stringify(reservations));
+        return true;
+      }
+
+      // Funciones de utilidad
+      function formatDate(date) {
+        return `${date.getDate()} de ${getMonthName(
+          date.getMonth()
+        )} de ${date.getFullYear()}`;
+      }
+
+      // Funciones de API
+      async function fetchReservations() {
+        try {
+          const response = await fetch(`${BACKEND_URL}/reservations`);
+          if (!response.ok) throw new Error("Error al obtener reservas");
+          return await response.json();
+        } catch (error) {
+          console.error("Error fetching reservations:", error);
+          throw error;
+        }
+      }
+
+      async function createReservation(reservation) {
+        try {
+          const response = await fetch(`${BACKEND_URL}/reservations`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify(reservation),
+          });
+
+          if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.message || "Error al crear reserva");
+          }
+
+          return await response.json();
+        } catch (error) {
+          console.error("Error creating reservation:", error);
+          throw error;
+        }
+      }
     </script>
   </body>
 </html>
