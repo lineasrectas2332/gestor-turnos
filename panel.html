@@ -3,1356 +3,197 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Panel de Control - #lodeltirry</title>
+    <title>Panel de Control - Lodeltirry</title>
     <link
       rel="stylesheet"
-      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
     />
     <style>
-      :root {
-        --primary: #ff0000;
-        --primary-dark: #c21818;
-        --secondary: #59d3ff;
-        --light: #2a2a2a;
-        --lighter: #1e1e1e;
-        --gray: #9e9e9e;
-        --light-gray: #3d3d3d;
-        --background: #121212;
-        --surface: #1e1e1e;
-        --card: #252525;
-        --hover: #3d3d3d;
-        --success: #4caf50;
-        --error: #f44336;
-        --text: #f5f5f5;
-        --text-light: #cccccc;
-        --unavailable: #99ff00;
-      }
-
-      * {
+      body {
+        background: #111;
+        color: #fff;
+        font-family: sans-serif;
         margin: 0;
         padding: 0;
-        box-sizing: border-box;
-        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
       }
-
-      body {
-        background-color: var(--background);
-        color: var(--text);
-        min-height: 100vh;
-        padding: 15px;
+      h1 {
+        text-align: center;
+        padding: 1rem;
+        background: #d40000;
+        margin: 0;
       }
-
       .container {
-        max-width: 1200px;
-        margin: 0 auto;
-      }
-
-      .header {
-        background: linear-gradient(
-          135deg,
-          var(--primary),
-          var(--primary-dark)
-        );
-        padding: 20px;
-        text-align: center;
-        border-radius: 12px;
-        margin-bottom: 15px;
-        color: white;
-      }
-
-      .logo {
-        font-size: 24px;
-        font-weight: bold;
-        letter-spacing: 1.5px;
-        margin-bottom: 5px;
-        color: white;
-        text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-      }
-
-      .subtitle {
-        font-size: 14px;
-        opacity: 0.9;
-      }
-
-      .admin-panel {
         display: grid;
-        grid-template-columns: 1fr;
-        gap: 15px;
-        margin-bottom: 20px;
+        grid-template-columns: 1fr 1fr;
+        gap: 1rem;
+        padding: 1rem;
       }
-
       .card {
-        background-color: var(--card);
+        background: #1a1a1a;
+        padding: 1rem;
         border-radius: 10px;
-        padding: 15px;
-        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
-        border: 1px solid var(--light-gray);
       }
-
-      .card-title {
-        font-size: 16px;
-        margin-bottom: 15px;
-        color: var(--text);
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        border-bottom: 1px solid var(--light-gray);
-        padding-bottom: 8px;
+      .card h2 {
+        margin-top: 0;
       }
-
-      .card-title i {
-        color: var(--primary);
-      }
-
-      .form-group {
-        margin-bottom: 15px;
-      }
-
-      .form-group label {
-        display: block;
-        margin-bottom: 6px;
-        font-weight: 500;
-        color: var(--text);
-        font-size: 14px;
-      }
-
-      .form-group input {
-        width: 100%;
-        padding: 10px 12px;
-        border-radius: 6px;
-        border: 1px solid var(--light-gray);
-        background-color: var(--surface);
-        color: var(--text);
-        font-size: 14px;
-        transition: all 0.3s ease;
-      }
-
-      .form-group input:focus {
-        outline: none;
-        border-color: var(--primary);
-        box-shadow: 0 0 0 2px rgba(233, 30, 99, 0.2);
-      }
-
-      .btn {
-        background: linear-gradient(
-          135deg,
-          var(--primary),
-          var(--primary-dark)
-        );
-        color: white;
+      input,
+      button {
+        padding: 0.5rem;
+        margin-top: 0.5rem;
+        border-radius: 5px;
         border: none;
-        padding: 10px 15px;
-        border-radius: 6px;
-        font-size: 14px;
-        font-weight: 600;
+      }
+      button {
         cursor: pointer;
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
-        transition: all 0.3s ease;
-        box-shadow: 0 3px 6px rgba(0, 0, 0, 0.2);
-        width: 100%;
-        justify-content: center;
-        margin-bottom: 10px;
+        background: #d40000;
+        color: #fff;
       }
-
-      .btn:hover {
-        background: linear-gradient(135deg, var(--primary-dark), #ad1457);
-        transform: translateY(-2px);
-        box-shadow: 0 5px 10px rgba(0, 0, 0, 0.25);
-      }
-
-      .btn-success {
-        background: linear-gradient(135deg, var(--success), #2e7d32);
-      }
-
-      .btn-success:hover {
-        background: linear-gradient(135deg, #43a047, #1b5e20);
-      }
-
-      .btn-warning {
-        background: linear-gradient(135deg, var(--unavailable), #f57c00);
-      }
-
-      .btn-warning:hover {
-        background: linear-gradient(135deg, #f57c00, #e65100);
-      }
-
-      .reservations-table {
-        width: 100%;
-        border-collapse: collapse;
-        margin-top: 15px;
-        background-color: var(--card);
-        border-radius: 10px;
-        overflow: hidden;
-        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
-        border: 1px solid var(--light-gray);
-      }
-
-      .reservations-table th,
-      .reservations-table td {
-        padding: 12px 10px;
-        text-align: left;
-        border-bottom: 1px solid var(--light-gray);
-        font-size: 14px;
-      }
-
-      .reservations-table th {
-        background-color: var(--primary);
-        color: white;
-        font-weight: 600;
-      }
-
-      .reservations-table tr:last-child td {
-        border-bottom: none;
-      }
-
-      .reservations-table tr:hover {
-        background-color: var(--hover);
-      }
-
-      .empty-state {
-        text-align: center;
-        padding: 30px 20px;
-        color: var(--gray);
-      }
-
-      .empty-state i {
-        font-size: 36px;
-        margin-bottom: 12px;
-        display: block;
-      }
-
-      .empty-state h3 {
-        font-size: 16px;
-        margin-bottom: 8px;
-      }
-
-      .empty-state p {
-        font-size: 14px;
-      }
-
       .message {
-        padding: 8px 12px;
-        border-radius: 6px;
-        margin-bottom: 12px;
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        font-size: 14px;
+        margin-top: 0.5rem;
+        padding: 0.3rem 0.5rem;
+        border-radius: 5px;
       }
-
-      .message.success {
-        background-color: rgba(76, 175, 80, 0.15);
-        color: var(--success);
-        border: 1px solid rgba(76, 175, 80, 0.3);
+      .success {
+        background: green;
       }
-
-      .message.error {
-        background-color: rgba(244, 67, 54, 0.15);
-        color: var(--error);
-        border: 1px solid rgba(244, 67, 54, 0.3);
+      .error {
+        background: crimson;
       }
-
-      .actions {
-        display: flex;
-        gap: 8px;
+      .warning {
+        background: orange;
       }
-
-      .btn-sm {
-        padding: 6px 10px;
-        font-size: 12px;
+      .days-container button {
+        margin: 0.2rem;
+        padding: 0.3rem 0.6rem;
+        border-radius: 5px;
       }
-
-      .btn-danger {
-        background: linear-gradient(135deg, var(--error), #c62828);
+      .days-container button.active {
+        background: green;
+        color: #fff;
       }
-
-      .btn-danger:hover {
-        background: linear-gradient(135deg, #ef5350, #b71c1c);
-      }
-
-      .stats {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-        gap: 12px;
-        margin-bottom: 15px;
-      }
-
-      .stat-card {
-        background-color: var(--card);
-        border-radius: 8px;
-        padding: 12px;
-        text-align: center;
-        box-shadow: 0 3px 8px rgba(0, 0, 0, 0.15);
-        border: 1px solid var(--light-gray);
-      }
-
-      .stat-value {
-        font-size: 20px;
-        font-weight: bold;
-        margin: 8px 0;
-        color: var(--primary);
-      }
-
-      .stat-label {
-        font-size: 12px;
-        color: var(--text-light);
-      }
-
-      .day-selector {
-        display: grid;
-        grid-template-columns: repeat(2, 1fr);
-        gap: 8px;
-        margin-bottom: 15px;
-      }
-
-      .day-option {
-        padding: 8px;
-        border: 2px solid var(--light-gray);
-        border-radius: 6px;
-        text-align: center;
+      .time-slot {
+        display: inline-block;
+        margin: 0.2rem;
+        padding: 0.3rem 0.5rem;
+        border: 1px solid #444;
+        border-radius: 5px;
         cursor: pointer;
-        transition: all 0.3s ease;
-        background-color: var(--surface);
-        color: var(--text);
-        font-size: 14px;
       }
-
-      .day-option.selected {
-        border-color: var(--unavailable);
-        background-color: rgba(255, 152, 0, 0.2);
-        color: var(--unavailable);
-        font-weight: bold;
+      .time-slot.active {
+        background: #d40000;
+        color: #fff;
       }
-
-      .day-option:hover {
-        border-color: var(--primary);
-      }
-
-      /* Nuevos estilos para la gestión de horarios por día */
-      .time-management {
-        margin-bottom: 20px;
-      }
-
-      .day-tabs {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 8px;
-        margin-bottom: 15px;
-      }
-
-      .day-tab {
-        padding: 8px 12px;
-        border: 2px solid var(--light-gray);
-        border-radius: 6px;
-        cursor: pointer;
-        transition: all 0.3s ease;
-        background-color: var(--surface);
-        color: var(--text);
-        font-size: 14px;
-        flex: 1;
-        min-width: 80px;
-        text-align: center;
-      }
-
-      .day-tab.active {
-        border-color: var(--primary);
-        background-color: var(--primary);
-        color: white;
-        font-weight: bold;
-      }
-
-      .day-tab:hover {
-        border-color: var(--primary);
-      }
-
-      .time-slots-config {
-        display: grid;
-        grid-template-columns: repeat(3, 1fr);
-        gap: 8px;
-        margin-bottom: 15px;
+      .reservas-list {
         max-height: 300px;
         overflow-y: auto;
       }
-
-      .time-slot-option {
-        padding: 8px;
-        border: 2px solid var(--light-gray);
-        border-radius: 6px;
-        text-align: center;
-        cursor: pointer;
-        transition: all 0.3s ease;
-        background-color: var(--surface);
-        color: var(--text);
-        font-size: 12px;
-      }
-
-      .time-slot-option.selected {
-        border-color: var(--success);
-        background-color: rgba(76, 175, 80, 0.2);
-        color: var(--success);
-        font-weight: bold;
-      }
-
-      .time-slot-option:hover {
-        border-color: var(--primary);
-      }
-
-      .time-actions {
-        display: flex;
-        flex-direction: column;
-        gap: 10px;
-        margin-top: 15px;
-      }
-
-      .config-section {
-        margin-bottom: 20px;
-      }
-
-      /* Estilos para las reservas por día */
-      .reservations-by-day {
-        margin-top: 15px;
-      }
-
-      .day-reservations {
-        margin-bottom: 15px;
-        background-color: var(--surface);
-        border-radius: 8px;
-        padding: 12px;
-        border: 1px solid var(--light-gray);
-      }
-
-      .day-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 10px;
-        padding-bottom: 8px;
-        border-bottom: 1px solid var(--light-gray);
-      }
-
-      .day-title {
-        font-weight: 600;
-        color: var(--primary);
-        font-size: 16px;
-      }
-
-      .reservation-count {
-        background-color: var(--primary);
-        color: white;
-        border-radius: 12px;
-        padding: 2px 8px;
-        font-size: 12px;
-        font-weight: bold;
-      }
-
-      .reservation-item {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        padding: 10px;
-        background-color: var(--card);
-        border-radius: 6px;
-        margin-bottom: 8px;
-        border: 1px solid var(--light-gray);
-      }
-
-      .reservation-info {
-        flex: 1;
-      }
-
-      .reservation-time {
-        font-weight: bold;
-        color: var(--text);
-        font-size: 14px;
-        margin-bottom: 4px;
-      }
-
-      .reservation-client {
-        font-size: 12px;
-        color: var(--text-light);
-      }
-
-      .reservation-actions {
-        display: flex;
-        gap: 5px;
-      }
-
-      /* Media queries para responsividad */
-      @media (min-width: 576px) {
-        .day-selector {
-          grid-template-columns: repeat(4, 1fr);
-        }
-
-        .time-slots-config {
-          grid-template-columns: repeat(4, 1fr);
-        }
-
-        .btn {
-          width: auto;
-        }
-
-        .day-tabs {
-          flex-wrap: nowrap;
-        }
-      }
-
-      @media (min-width: 768px) {
-        .admin-panel {
-          grid-template-columns: 1fr 1fr;
-        }
-
-        .day-selector {
-          grid-template-columns: repeat(7, 1fr);
-        }
-
-        .time-slots-config {
-          grid-template-columns: repeat(5, 1fr);
-        }
-
-        .time-actions {
-          flex-direction: row;
-        }
-      }
-
-      @media (min-width: 992px) {
-        .time-slots-config {
-          grid-template-columns: repeat(6, 1fr);
-        }
-      }
-
-      /* Mejoras de visualización para móviles */
-      .mobile-only {
-        display: block;
-      }
-
-      .desktop-only {
-        display: none;
-      }
-
-      @media (min-width: 768px) {
-        .mobile-only {
-          display: none;
-        }
-
-        .desktop-only {
-          display: block;
-        }
+      .reserva-item {
+        padding: 0.5rem;
+        border-bottom: 1px solid #444;
       }
     </style>
   </head>
   <body>
+    <h1>
+      #LODELTIRRY <br /><small
+        >Panel de Control - Administración de Reservas</small
+      >
+    </h1>
+
     <div class="container">
-      <div class="header">
-        <div class="logo">#LODELTIRRY</div>
-        <div class="subtitle">
-          Panel de Control - Administración de Reservas
-        </div>
+      <!-- Configuración de precios -->
+      <div class="card">
+        <h2>Configuración de Precios</h2>
+        <label>Precio del Corte de Pelo ($)</label><br />
+        <input type="number" id="service-price" />
+        <button id="save-price">
+          <i class="fas fa-save"></i> Guardar Precio
+        </button>
+        <div id="price-message"></div>
       </div>
 
-      <div class="admin-panel">
-        <div class="card">
-          <h3 class="card-title">
-            <i class="fas fa-cog"></i>Configuración de Precios
-          </h3>
-          <div id="price-message"></div>
-          <div class="form-group">
-            <label for="service-price">Precio del Corte de Pelo ($)</label>
-            <input
-              type="number"
-              id="service-price"
-              placeholder="Ingresa el precio del servicio"
-            />
-          </div>
-          <button class="btn" id="save-price">
-            <i class="fas fa-save"></i> Guardar Precio
-          </button>
-
-          <!-- Reservas ordenadas por día -->
-          <h3 class="card-title" style="margin-top: 20px">
-            <i class="fas fa-calendar-check"></i>Reservas por Día
-          </h3>
-          <div id="reservations-by-day" class="reservations-by-day">
-            <!-- Las reservas ordenadas por día se cargarán aquí -->
-          </div>
-        </div>
-
-        <div class="card">
-          <h3 class="card-title">
-            <i class="fas fa-calendar-times"></i>Gestión de Días No Disponibles
-          </h3>
-          <p>Selecciona los días de la semana que no estarán disponibles:</p>
-
-          <div class="day-selector" id="day-selector">
-            <div class="day-option" data-day="0">Domingo</div>
-            <div class="day-option" data-day="1">Lunes</div>
-            <div class="day-option" data-day="2">Martes</div>
-            <div class="day-option" data-day="3">Miércoles</div>
-            <div class="day-option" data-day="4">Jueves</div>
-            <div class="day-option" data-day="5">Viernes</div>
-            <div class="day-option" data-day="6">Sábado</div>
-          </div>
-
-          <div id="days-message"></div>
-          <button class="btn btn-warning" id="save-days">
-            <i class="fas fa-save"></i> Guardar Días No Disponibles
-          </button>
-        </div>
+      <!-- Gestión de días no disponibles -->
+      <div class="card">
+        <h2>Gestión de Días No Disponibles</h2>
+        <div class="days-container" id="days-container"></div>
+        <button id="save-days">
+          <i class="fas fa-save"></i> Guardar Días No Disponibles
+        </button>
       </div>
 
-      <!-- Nueva sección para gestión de horarios por día -->
-      <div class="card config-section">
-        <h3 class="card-title">
-          <i class="fas fa-clock"></i>Gestión de Horarios Disponibles por Día
-        </h3>
-        <p>
-          Selecciona un día y marca los horarios que estarán disponibles para
-          reservas (de 8:00 a 23:00):
-        </p>
-
-        <div class="time-management">
-          <div class="day-tabs" id="day-tabs">
-            <div class="day-tab active" data-day="0">Domingo</div>
-            <div class="day-tab" data-day="1">Lunes</div>
-            <div class="day-tab" data-day="2">Martes</div>
-            <div class="day-tab" data-day="3">Miércoles</div>
-            <div class="day-tab" data-day="4">Jueves</div>
-            <div class="day-tab" data-day="5">Viernes</div>
-            <div class="day-tab" data-day="6">Sábado</div>
-          </div>
-
-          <div class="time-slots-config" id="time-slots-config">
-            <!-- Los horarios se generarán dinámicamente con JavaScript -->
-          </div>
-
-          <div class="time-actions">
-            <button class="btn btn-success" id="save-times">
-              <i class="fas fa-save"></i> Guardar Horarios
-            </button>
-            <button class="btn" id="copy-to-other-days">
-              <i class="fas fa-copy"></i> Copiar a Otros Días
-            </button>
-            <button class="btn btn-warning" id="reset-times">
-              <i class="fas fa-undo"></i> Restablecer Horarios
-            </button>
-          </div>
-        </div>
-
-        <div id="times-message"></div>
+      <!-- Gestión de horarios -->
+      <div class="card" style="grid-column: 1/3">
+        <h2>Gestión de Horarios Disponibles por Día</h2>
+        <div id="weekdays-container"></div>
+        <button id="save-times">
+          <i class="fas fa-save"></i> Guardar Horarios
+        </button>
       </div>
 
-      <div class="admin-panel">
-        <div class="card">
-          <h3 class="card-title">
-            <i class="fas fa-sync-alt"></i>Gestión de Datos
-          </h3>
-          <p>Realiza copias de seguridad o restablece los datos del sistema.</p>
-          <div
-            style="
-              display: flex;
-              flex-direction: column;
-              gap: 10px;
-              margin-top: 15px;
-            "
-          >
-            <button class="btn btn-success" id="export-data">
-              <i class="fas fa-download"></i> Exportar Datos
-            </button>
-            <button class="btn btn-danger" id="clear-data">
-              <i class="fas fa-trash"></i> Eliminar Todos los Datos
-            </button>
-            <button class="btn btn-warning" id="clean-expired">
-              <i class="fas fa-broom"></i> Limpiar Turnos Vencidos
-            </button>
-          </div>
-          <div id="clean-message"></div>
-        </div>
-
-        <div class="card">
-          <h3 class="card-title">
-            <i class="fas fa-info-circle"></i>Información
-          </h3>
-          <p>
-            <strong>Días no disponibles:</strong> Aparecerán tachados en naranja
-            en el calendario y no se podrán seleccionar.
-          </p>
-          <p>
-            <strong>Horarios reservados:</strong> Aparecerán tachados en rojo en
-            el calendario y no se podrán seleccionar.
-          </p>
-          <p>
-            <strong>Horarios disponibles:</strong> Puedes configurar qué
-            horarios de 8:00 a 23:00 estarán disponibles para cada día de la
-            semana.
-          </p>
-          <p>
-            <strong>Por defecto:</strong> Los lunes están marcados como no
-            disponibles.
-          </p>
-          <p>
-            <strong>Turnos vencidos:</strong> Los turnos se eliminan
-            automáticamente a las 8:00 AM del día siguiente.
-          </p>
-        </div>
-      </div>
-
-      <div class="card desktop-only">
-        <h3 class="card-title">
-          <i class="fas fa-calendar-check"></i>Reservas Activas (Vista Completa)
-        </h3>
-
-        <div id="stats" class="stats">
-          <!-- Las estadísticas se cargarán aquí mediante JavaScript -->
-        </div>
-
-        <div id="reservations-container">
-          <table class="reservations-table" id="reservations-table">
-            <thead>
-              <tr>
-                <th>Cliente</th>
-                <th>Teléfono</th>
-                <th>Fecha</th>
-                <th>Hora</th>
-                <th>Acciones</th>
-              </tr>
-            </thead>
-            <tbody id="reservations-body">
-              <!-- Las reservas se cargarán aquí mediante JavaScript -->
-            </tbody>
-          </table>
-          <div id="empty-state" class="empty-state">
-            <i class="far fa-calendar-times"></i>
-            <h3>No hay reservas activas</h3>
-            <p>Todavía no se han realizado reservas en el sistema.</p>
-          </div>
-        </div>
+      <!-- Reservas -->
+      <div class="card" style="grid-column: 1/3">
+        <h2>Reservas por Día</h2>
+        <input type="date" id="filter-date" />
+        <button id="load-reservations">Cargar Reservas</button>
+        <div id="reservas-container" class="reservas-list"></div>
       </div>
     </div>
 
     <script>
-      // URLs y elementos del DOM
       const BACKEND_URL = "https://gestor-turnos-yv0m.onrender.com";
 
-      // Elementos del DOM
-      const reservationsBody = document.getElementById("reservations-body");
-      const reservationsTable = document.getElementById("reservations-table");
-      const emptyState = document.getElementById("empty-state");
-      const statsContainer = document.getElementById("stats");
-      const cleanMessage = document.getElementById("clean-message");
+      const priceInput = document.getElementById("service-price");
       const priceMessage = document.getElementById("price-message");
-      const daysMessage = document.getElementById("days-message");
-      const timesMessage = document.getElementById("times-message");
-      const reservationsByDay = document.getElementById("reservations-by-day");
 
-      // Variables de estado
+      const daysContainer = document.getElementById("days-container");
+      const weekdaysContainer = document.getElementById("weekdays-container");
+      const reservasContainer = document.getElementById("reservas-container");
+
+      const filterDate = document.getElementById("filter-date");
+
       let unavailableDays = JSON.parse(
-        localStorage.getItem("unavailableDays") || "[1]"
-      ); // Lunes no disponible por defecto
+        localStorage.getItem("unavailableDays") || "[]"
+      );
       let availableTimes = JSON.parse(
         localStorage.getItem("availableTimes") || "{}"
       );
-      let currentSelectedDay = 0;
 
-      // Inicialización
-      document.addEventListener("DOMContentLoaded", function () {
-        initializePanel();
-        loadReservations();
-        loadPrice();
-        initializeDaySelector();
-        initializeTimeManagement();
-        setupEventListeners();
-      });
-
-      // Inicializar el panel
-      function initializePanel() {
-        // Cargar configuración guardada
-        loadUnavailableDays();
-        loadAvailableTimes();
-      }
-
-      // Configurar event listeners
-      function setupEventListeners() {
-        // Precio
-        document
-          .getElementById("save-price")
-          .addEventListener("click", savePrice);
-
-        // Días no disponibles
-        document
-          .getElementById("save-days")
-          .addEventListener("click", saveUnavailableDays);
-
-        // Gestión de horarios
-        document
-          .getElementById("save-times")
-          .addEventListener("click", saveAvailableTimes);
-        document
-          .getElementById("copy-to-other-days")
-          .addEventListener("click", copyTimesToOtherDays);
-        document
-          .getElementById("reset-times")
-          .addEventListener("click", resetTimes);
-
-        // Gestión de datos
-        document
-          .getElementById("export-data")
-          .addEventListener("click", exportData);
-        document
-          .getElementById("clear-data")
-          .addEventListener("click", clearAllData);
-        document
-          .getElementById("clean-expired")
-          .addEventListener("click", cleanExpiredReservations);
-      }
-
-      // --- FUNCIONES DE PRECIO ---
-      function loadPrice() {
-        const savedPrice = localStorage.getItem("servicePrice") || "2500";
-        document.getElementById("service-price").value = savedPrice;
-      }
-
-      function savePrice() {
-        const price = document.getElementById("service-price").value;
-        if (!price || isNaN(price) || price <= 0) {
-          showMessage(
-            priceMessage,
-            "Por favor ingresa un precio válido",
-            "error"
-          );
-          return;
-        }
-
-        localStorage.setItem("servicePrice", price);
-        showMessage(priceMessage, "Precio guardado correctamente", "success");
-
-        // Actualizar el frontend si está abierto
-        if (window.opener) {
-          window.opener.postMessage({ type: "priceUpdate", price: price }, "*");
+      /* ---------- Configuración de precios ---------- */
+      async function loadPrice() {
+        try {
+          const res = await fetch(`${BACKEND_URL}/api/config`);
+          if (!res.ok) throw new Error("Error obteniendo precio");
+          const data = await res.json();
+          priceInput.value = data.price;
+        } catch (err) {
+          console.error(err);
+          // fallback a localStorage si el backend falla
+          priceInput.value = localStorage.getItem("servicePrice") || 2500;
         }
       }
 
-      // --- FUNCIONES DE DÍAS NO DISPONIBLES ---
-      function initializeDaySelector() {
-        const dayOptions = document.querySelectorAll(
-          "#day-selector .day-option"
-        );
-        dayOptions.forEach((option) => {
-          const day = parseInt(option.getAttribute("data-day"));
-          option.addEventListener("click", () => toggleDaySelection(day));
-
-          // Marcar como seleccionado si está en la lista
-          if (unavailableDays.includes(day)) {
-            option.classList.add("selected");
-          }
-        });
-      }
-
-      function loadUnavailableDays() {
-        // Ya se cargó en la inicialización
-      }
-
-      function toggleDaySelection(day) {
-        const option = document.querySelector(
-          `#day-selector .day-option[data-day="${day}"]`
-        );
-        const index = unavailableDays.indexOf(day);
-
-        if (index > -1) {
-          // Quitar de la lista
-          unavailableDays.splice(index, 1);
-          option.classList.remove("selected");
-        } else {
-          // Agregar a la lista
-          unavailableDays.push(day);
-          option.classList.add("selected");
-        }
-      }
-
-      function saveUnavailableDays() {
-        localStorage.setItem(
-          "unavailableDays",
-          JSON.stringify(unavailableDays)
-        );
-        showMessage(
-          daysMessage,
-          "Días no disponibles guardados correctamente",
-          "success"
-        );
-
-        // Actualizar el frontend si está abierto
-        if (window.opener) {
-          window.opener.postMessage(
-            { type: "unavailableDaysUpdate", days: unavailableDays },
-            "*"
-          );
-        }
-      }
-
-      // --- FUNCIONES DE GESTIÓN DE HORARIOS ---
-      function initializeTimeManagement() {
-        // Configurar tabs de días
-        const dayTabs = document.querySelectorAll("#day-tabs .day-tab");
-        dayTabs.forEach((tab) => {
-          tab.addEventListener("click", () => {
-            // Remover clase active de todos los tabs
-            dayTabs.forEach((t) => t.classList.remove("active"));
-            // Agregar clase active al tab clickeado
-            tab.classList.add("active");
-            currentSelectedDay = parseInt(tab.getAttribute("data-day"));
-            generateTimeSlotsForDay(currentSelectedDay);
+      async function savePrice() {
+        const price = priceInput.value;
+        try {
+          const res = await fetch(`${BACKEND_URL}/api/config?price=${price}`, {
+            method: "PUT",
           });
-        });
-
-        // Generar horarios para el día inicial (Domingo)
-        generateTimeSlotsForDay(currentSelectedDay);
-      }
-
-      function loadAvailableTimes() {
-        // Ya se cargó en la inicialización
-      }
-
-      function generateTimeSlotsForDay(day) {
-        const container = document.getElementById("time-slots-config");
-        container.innerHTML = "";
-
-        // Generar horarios de 8:00 a 23:00 cada 30 minutos
-        for (let hour = 8; hour <= 23; hour++) {
-          for (let minute of ["00", "30"]) {
-            if (hour === 23 && minute === "30") break; // No generar 23:30
-
-            const time = `${hour.toString().padStart(2, "0")}:${minute}`;
-            const timeSlot = document.createElement("div");
-            timeSlot.className = "time-slot-option";
-            timeSlot.textContent = time;
-            timeSlot.setAttribute("data-time", time);
-
-            // Verificar si este horario está disponible para el día
-            const dayKey = day.toString();
-            const isAvailable =
-              availableTimes[dayKey] && availableTimes[dayKey].includes(time);
-            if (isAvailable) {
-              timeSlot.classList.add("selected");
-            }
-
-            timeSlot.addEventListener("click", () => toggleTimeSelection(time));
-            container.appendChild(timeSlot);
-          }
+          if (!res.ok) throw new Error("Error guardando precio");
+          priceMessage.innerHTML = `<div class="message success">Precio actualizado correctamente</div>`;
+        } catch (err) {
+          console.error(err);
+          // fallback a localStorage
+          localStorage.setItem("servicePrice", price);
+          priceMessage.innerHTML = `<div class="message warning">Guardado en modo local (backend no disponible)</div>`;
         }
+        // enviar a index.html
+        window.postMessage({ type: "priceUpdate", price }, "*");
       }
 
-      function toggleTimeSelection(time) {
-        const slot = document.querySelector(
-          `#time-slots-config .time-slot-option[data-time="${time}"]`
-        );
-        const dayKey = currentSelectedDay.toString();
-
-        if (!availableTimes[dayKey]) {
-          availableTimes[dayKey] = [];
-        }
-
-        const index = availableTimes[dayKey].indexOf(time);
-        if (index > -1) {
-          // Quitar de la lista
-          availableTimes[dayKey].splice(index, 1);
-          slot.classList.remove("selected");
-        } else {
-          // Agregar a la lista
-          availableTimes[dayKey].push(time);
-          slot.classList.add("selected");
-        }
-      }
-
-      function saveAvailableTimes() {
-        localStorage.setItem("availableTimes", JSON.stringify(availableTimes));
-        showMessage(
-          timesMessage,
-          "Horarios guardados correctamente",
-          "success"
-        );
-
-        // Actualizar el frontend si está abierto
-        if (window.opener) {
-          window.opener.postMessage(
-            { type: "availableTimesUpdate", times: availableTimes },
-            "*"
-          );
-        }
-      }
-
-      function copyTimesToOtherDays() {
-        const sourceDay = currentSelectedDay.toString();
-        const sourceTimes = availableTimes[sourceDay] || [];
-
-        if (!sourceTimes.length) {
-          showMessage(
-            timesMessage,
-            "No hay horarios para copiar en este día",
-            "error"
-          );
-          return;
-        }
-
-        if (
-          !confirm(
-            `¿Copiar los ${sourceTimes.length} horarios del día actual a todos los demás días?`
-          )
-        ) {
-          return;
-        }
-
-        for (let day = 0; day <= 6; day++) {
-          if (day !== currentSelectedDay) {
-            availableTimes[day.toString()] = [...sourceTimes];
-          }
-        }
-
-        showMessage(
-          timesMessage,
-          `Horarios copiados a todos los días`,
-          "success"
-        );
-        saveAvailableTimes();
-      }
-
-      function resetTimes() {
-        if (
-          !confirm("¿Restablecer todos los horarios a su estado por defecto?")
-        ) {
-          return;
-        }
-
-        availableTimes = {};
-        showMessage(timesMessage, "Horarios restablecidos", "success");
-        generateTimeSlotsForDay(currentSelectedDay);
-        saveAvailableTimes();
-      }
-
-      // --- FUNCIONES DE RESERVAS ---
-      async function fetchReservations() {
-        try {
-          const response = await fetch(`${BACKEND_URL}/api/reservations`);
-          if (!response.ok) throw new Error("Error al obtener reservas");
-          return await response.json();
-        } catch (error) {
-          console.error("Error fetching reservations:", error);
-          // Fallback a localStorage si el backend falla
-          return JSON.parse(localStorage.getItem("reservations") || "[]");
-        }
-      }
-
-      async function deleteReservation(id) {
-        if (!confirm("¿Seguro que querés borrar esta reserva?")) return;
-
-        try {
-          const response = await fetch(
-            `${BACKEND_URL}/api/reservations/${id}`,
-            {
-              method: "DELETE",
-            }
-          );
-
-          if (response.status === 204) {
-            loadReservations();
-            showMessage(
-              cleanMessage,
-              "Reserva eliminada correctamente",
-              "success"
-            );
-          } else {
-            throw new Error("Error al eliminar reserva");
-          }
-        } catch (error) {
-          console.error("Error deleting reservation:", error);
-          // Fallback a localStorage si el backend falla
-          const reservations = JSON.parse(
-            localStorage.getItem("reservations") || "[]"
-          );
-          const updatedReservations = reservations.filter((r) => r.id !== id);
-          localStorage.setItem(
-            "reservations",
-            JSON.stringify(updatedReservations)
-          );
-          loadReservations();
-          showMessage(
-            cleanMessage,
-            "Reserva eliminada correctamente (modo local)",
-            "success"
-          );
-        }
-      }
-
-      function renderReservations(reservations) {
-        reservationsBody.innerHTML = "";
-        statsContainer.innerHTML = "";
-        reservationsByDay.innerHTML = "";
-
-        if (reservations.length === 0) {
-          emptyState.style.display = "block";
-          reservationsTable.style.display = "none";
-
-          // Mostrar estadísticas vacías
-          statsContainer.innerHTML = `
-            <div class="stat-card">
-              <div class="stat-value">0</div>
-              <div class="stat-label">Reservas Totales</div>
-            </div>
-            <div class="stat-card">
-              <div class="stat-value">0</div>
-              <div class="stat-label">Hoy</div>
-            </div>
-            <div class="stat-card">
-              <div class="stat-value">0</div>
-              <div class="stat-label">Esta Semana</div>
-            </div>
-            <div class="stat-card">
-              <div class="stat-value">0</div>
-              <div class="stat-label">Este Mes</div>
-            </div>
-          `;
-          return;
-        }
-
-        emptyState.style.display = "none";
-        reservationsTable.style.display = "table";
-
-        // Ordenar reservas por fecha y hora
-        reservations.sort((a, b) => {
-          const dateA = new Date(`${a.date}T${a.time}`);
-          const dateB = new Date(`${b.date}T${b.time}`);
-          return dateA - dateB;
-        });
-
-        // Agrupar reservas por día
-        const reservationsByDate = {};
-        reservations.forEach((reservation) => {
-          if (!reservationsByDate[reservation.date]) {
-            reservationsByDate[reservation.date] = [];
-          }
-          reservationsByDate[reservation.date].push(reservation);
-        });
-
-        // Renderizar reservas por día (para vista móvil)
-        Object.keys(reservationsByDate)
-          .sort()
-          .forEach((date) => {
-            const dayReservations = reservationsByDate[date];
-            const dateObj = new Date(date);
-            const dayName = getDayName(dateObj.getDay());
-            const formattedDate = formatDate(date);
-
-            const dayElement = document.createElement("div");
-            dayElement.className = "day-reservations";
-            dayElement.innerHTML = `
-            <div class="day-header">
-              <div class="day-title">${dayName}, ${formattedDate}</div>
-              <div class="reservation-count">${dayReservations.length}</div>
-            </div>
-          `;
-
-            dayReservations.forEach((reservation) => {
-              const reservationElement = document.createElement("div");
-              reservationElement.className = "reservation-item";
-              reservationElement.innerHTML = `
-              <div class="reservation-info">
-                <div class="reservation-time">${reservation.time}</div>
-                <div class="reservation-client">${reservation.clientName} - ${reservation.phone}</div>
-              </div>
-              <div class="reservation-actions">
-                <button class="btn btn-sm btn-danger" onclick="deleteReservation('${reservation.id}')">
-                  <i class="fas fa-trash"></i>
-                </button>
-              </div>
-            `;
-              dayElement.appendChild(reservationElement);
-            });
-
-            reservationsByDay.appendChild(dayElement);
-          });
-
-        // Renderizar tabla completa (para desktop)
-        reservations.forEach((reservation) => {
-          const row = document.createElement("tr");
-          row.innerHTML = `
-            <td>${reservation.clientName}</td>
-            <td>${reservation.phone}</td>
-            <td>${formatDate(reservation.date)}</td>
-            <td>${reservation.time}</td>
-            <td class="actions">
-              <button class="btn btn-sm btn-danger" onclick="deleteReservation('${
-                reservation.id
-              }')">
-                <i class="fas fa-trash"></i> Eliminar
-              </button>
-            </td>
-          `;
-          reservationsBody.appendChild(row);
-        });
-
-        // Calcular estadísticas
-        const today = new Date().toISOString().split("T")[0];
-        const todayReservations = reservations.filter(
-          (r) => r.date === today
-        ).length;
-
-        const weekStart = new Date();
-        weekStart.setDate(weekStart.getDate() - weekStart.getDay());
-        const weekReservations = reservations.filter((r) => {
-          const reservationDate = new Date(r.date);
-          return reservationDate >= weekStart;
-        }).length;
-
-        const monthStart = new Date();
-        monthStart.setDate(1);
-        const monthReservations = reservations.filter((r) => {
-          const reservationDate = new Date(r.date);
-          return reservationDate >= monthStart;
-        }).length;
-
-        // Renderizar estadísticas
-        statsContainer.innerHTML = `
-          <div class="stat-card">
-            <div class="stat-value">${reservations.length}</div>
-            <div class="stat-label">Reservas Totales</div>
-          </div>
-          <div class="stat-card">
-            <div class="stat-value">${todayReservations}</div>
-            <div class="stat-label">Hoy</div>
-          </div>
-          <div class="stat-card">
-            <div class="stat-value">${weekReservations}</div>
-            <div class="stat-label">Esta Semana</div>
-          </div>
-          <div class="stat-card">
-            <div class="stat-value">${monthReservations}</div>
-            <div class="stat-label">Este Mes</div>
-          </div>
-        `;
-      }
-
-      async function loadReservations() {
-        try {
-          const reservations = await fetchReservations();
-          renderReservations(reservations);
-        } catch (error) {
-          console.error("Error loading reservations:", error);
-          showMessage(cleanMessage, "Error al cargar las reservas", "error");
-        }
-      }
-
-      // --- FUNCIONES DE GESTIÓN DE DATOS ---
-      function exportData() {
-        const data = {
-          reservations: JSON.parse(
-            localStorage.getItem("reservations") || "[]"
-          ),
-          servicePrice: localStorage.getItem("servicePrice") || "2500",
-          unavailableDays: JSON.parse(
-            localStorage.getItem("unavailableDays") || "[1]"
-          ),
-          availableTimes: JSON.parse(
-            localStorage.getItem("availableTimes") || "{}"
-          ),
-          exportDate: new Date().toISOString(),
-        };
-
-        const dataStr = JSON.stringify(data, null, 2);
-        const dataBlob = new Blob([dataStr], { type: "application/json" });
-        const url = URL.createObjectURL(dataBlob);
-        const link = document.createElement("a");
-        link.href = url;
-        link.download = `reservas-backup-${
-          new Date().toISOString().split("T")[0]
-        }.json`;
-        link.click();
-        URL.revokeObjectURL(url);
-
-        showMessage(cleanMessage, "Datos exportados correctamente", "success");
-      }
-
-      function clearAllData() {
-        if (
-          !confirm(
-            "¿ESTÁS SEGURO? Esto eliminará TODAS las reservas y configuraciones."
-          )
-        )
-          return;
-        if (!confirm("¿REALMENTE SEGURO? Esta acción no se puede deshacer."))
-          return;
-
-        localStorage.clear();
-        showMessage(
-          cleanMessage,
-          "Todos los datos han sido eliminados",
-          "success"
-        );
-
-        // Recargar la página para reflejar los cambios
-        setTimeout(() => {
-          location.reload();
-        }, 2000);
-      }
-
-      async function cleanExpiredReservations() {
-        if (!confirm("¿Eliminar turnos vencidos (anteriores a hoy)?")) return;
-
-        try {
-          const reservations = await fetchReservations();
-          const today = new Date().toISOString().split("T")[0];
-          const expiredReservations = reservations.filter(
-            (r) => r.date < today
-          );
-
-          if (expiredReservations.length === 0) {
-            showMessage(
-              cleanMessage,
-              "No hay turnos vencidos para eliminar",
-              "success"
-            );
-            return;
-          }
-
-          // Eliminar cada reserva vencida
-          for (const reservation of expiredReservations) {
-            await deleteReservation(reservation.id);
-          }
-
-          showMessage(
-            cleanMessage,
-            `${expiredReservations.length} turnos vencidos eliminados`,
-            "success"
-          );
-        } catch (error) {
-          console.error("Error cleaning expired reservations:", error);
-          showMessage(
-            cleanMessage,
-            "Error al eliminar turnos vencidos",
-            "error"
-          );
-        }
-      }
-
-      // --- FUNCIONES UTILITARIAS ---
-      function showMessage(container, message, type) {
-        container.innerHTML = `<div class="message ${type}"><i class="fas fa-${
-          type === "success" ? "check" : "exclamation"
-        }"></i> ${message}</div>`;
-        setTimeout(() => {
-          container.innerHTML = "";
-        }, 5000);
-      }
-
-      function formatDate(dateString) {
-        const date = new Date(dateString);
-        return date.toLocaleDateString("es-AR", {
-          day: "2-digit",
-          month: "2-digit",
-          year: "numeric",
-        });
-      }
-
-      function getDayName(dayIndex) {
-        const days = [
+      /* ---------- Días no disponibles ---------- */
+      function renderDays() {
+        daysContainer.innerHTML = "";
+        const names = [
           "Domingo",
           "Lunes",
           "Martes",
@@ -1361,11 +202,133 @@
           "Viernes",
           "Sábado",
         ];
-        return days[dayIndex];
+        names.forEach((day, i) => {
+          const btn = document.createElement("button");
+          btn.textContent = day;
+          if (unavailableDays.includes(i)) btn.classList.add("active");
+          btn.addEventListener("click", () => {
+            if (unavailableDays.includes(i)) {
+              unavailableDays = unavailableDays.filter((d) => d !== i);
+            } else {
+              unavailableDays.push(i);
+            }
+            renderDays();
+          });
+          daysContainer.appendChild(btn);
+        });
       }
 
-      // Hacer las funciones disponibles globalmente para los event listeners
-      window.deleteReservation = deleteReservation;
+      function saveDays() {
+        localStorage.setItem(
+          "unavailableDays",
+          JSON.stringify(unavailableDays)
+        );
+        window.postMessage(
+          { type: "unavailableDaysUpdate", days: unavailableDays },
+          "*"
+        );
+        alert("Días guardados correctamente");
+      }
+
+      /* ---------- Horarios ---------- */
+      function renderTimes() {
+        weekdaysContainer.innerHTML = "";
+        const names = [
+          "Domingo",
+          "Lunes",
+          "Martes",
+          "Miércoles",
+          "Jueves",
+          "Viernes",
+          "Sábado",
+        ];
+        names.forEach((day, i) => {
+          const div = document.createElement("div");
+          div.innerHTML = `<h3>${day}</h3>`;
+          let dayTimes = availableTimes[i] || [];
+          for (let hour = 8; hour <= 19; hour++) {
+            const h1 = `${hour}:00`,
+              h2 = `${hour}:30`;
+            [h1, h2].forEach((t) => {
+              const slot = document.createElement("div");
+              slot.classList.add("time-slot");
+              slot.textContent = t;
+              if (dayTimes.includes(t)) slot.classList.add("active");
+              slot.addEventListener("click", () => {
+                if (dayTimes.includes(t)) {
+                  dayTimes = dayTimes.filter((x) => x !== t);
+                } else {
+                  dayTimes.push(t);
+                }
+                availableTimes[i] = dayTimes;
+                renderTimes();
+              });
+              div.appendChild(slot);
+            });
+          }
+          weekdaysContainer.appendChild(div);
+        });
+      }
+
+      function saveTimes() {
+        localStorage.setItem("availableTimes", JSON.stringify(availableTimes));
+        window.postMessage(
+          { type: "availableTimesUpdate", times: availableTimes },
+          "*"
+        );
+        alert("Horarios guardados correctamente");
+      }
+
+      /* ---------- Reservas ---------- */
+      async function loadReservations() {
+        reservasContainer.innerHTML = "";
+        const dateVal = filterDate.value;
+        if (!dateVal) {
+          reservasContainer.innerHTML =
+            "<div class='message warning'>Seleccioná una fecha</div>";
+          return;
+        }
+        try {
+          const res = await fetch(`${BACKEND_URL}/api/reservations`);
+          if (!res.ok) throw new Error("Error cargando reservas");
+          const data = await res.json();
+          const filtered = data.filter((r) => r.date === dateVal);
+          if (filtered.length === 0) {
+            reservasContainer.innerHTML =
+              "<div class='message'>No hay reservas</div>";
+            return;
+          }
+          filtered.forEach((r) => {
+            const div = document.createElement("div");
+            div.classList.add("reserva-item");
+            div.textContent = `${r.clientName} - ${r.phone} - ${r.time}`;
+            reservasContainer.appendChild(div);
+          });
+        } catch (err) {
+          console.error(err);
+          reservasContainer.innerHTML =
+            "<div class='message error'>Error cargando reservas</div>";
+        }
+      }
+
+      /* ---------- Init ---------- */
+      document.addEventListener("DOMContentLoaded", () => {
+        loadPrice();
+        renderDays();
+        renderTimes();
+        document
+          .getElementById("save-price")
+          .addEventListener("click", savePrice);
+        document
+          .getElementById("save-days")
+          .addEventListener("click", saveDays);
+        document
+          .getElementById("save-times")
+          .addEventListener("click", saveTimes);
+        document
+          .getElementById("load-reservations")
+          .addEventListener("click", loadReservations);
+      });
     </script>
   </body>
 </html>

@@ -872,7 +872,7 @@
     </div>
 
     <script>
-      // Elementos del DOM
+      /* ---------------- DOM ---------------- */
       const calendarBody = document.getElementById("calendar-body");
       const timeSlotsContainer = document.getElementById("time-slots");
       const selectionMessage = document.getElementById("selection-message");
@@ -888,7 +888,7 @@
       const currentMonthEl = document.getElementById("current-month");
       const priceDisplay = document.getElementById("price-display");
 
-      // Variables de estado
+      /* ---------------- Estado ---------------- */
       let selectedDate = null;
       let selectedTime = null;
       let currentDate = new Date();
@@ -896,46 +896,40 @@
       let currentYear = currentDate.getFullYear();
 
       const BACKEND_URL = "https://gestor-turnos-yv0m.onrender.com";
-      let useBackend = true; // Variable para controlar si usamos el backend o localStorage
+      let useBackend = true; // si el backend responde usamos API, sino fallback a localStorage
 
-      // Inicialización
+      // Config locales (panel guarda esto en localStorage y además envía postMessage)
+      let unavailableDays = JSON.parse(
+        localStorage.getItem("unavailableDays") || "[1]"
+      ); // lunes por defecto
+      let availableTimes = JSON.parse(
+        localStorage.getItem("availableTimes") || "{}"
+      );
+
+      /* ---------------- Inicio ---------------- */
       document.addEventListener("DOMContentLoaded", () => {
         generateCalendar(currentMonth, currentYear);
         setupEventListeners();
         checkBackendConnection();
-        loadPrice(); // cargar precio guardado
+        loadPrice();
       });
 
-      // Verificar conexión con el backend
+      /* ---------------- Comprobación backend ---------------- */
       async function checkBackendConnection() {
         try {
-          const response = await fetch(`${BACKEND_URL}/health`, {
-            method: "GET",
-            headers: {
-              "Content-Type": "application/json",
-            },
-          });
-
-          if (response.ok) {
-            console.log("Conexión con el backend establecida");
-            useBackend = true;
-          } else {
-            console.error("Error en la conexión con el backend");
-            useBackend = false;
-            selectionMessage.textContent =
-              "Modo local activado. Las reservas se guardarán localmente.";
-            selectionMessage.className = "message warning";
-          }
-        } catch (error) {
-          console.error("Error conectando con el backend:", error);
+          const res = await fetch(`${BACKEND_URL}/health`);
+          useBackend = res.ok;
+        } catch (err) {
           useBackend = false;
+        }
+        if (!useBackend) {
           selectionMessage.textContent =
             "Modo local activado. Las reservas se guardarán localmente.";
           selectionMessage.className = "message warning";
         }
       }
 
-      // Configurar event listeners
+      /* ---------------- Event listeners ---------------- */
       function setupEventListeners() {
         prevMonthBtn.addEventListener("click", () => {
           currentMonth--;
@@ -956,9 +950,38 @@
         });
 
         btnConfirm.addEventListener("click", confirmReservation);
+
+        // Escuchar actualizaciones desde panel.html (postMessage)
+        window.addEventListener("message", (event) => {
+          const data = event.data;
+          if (!data || !data.type) return;
+
+          if (data.type === "priceUpdate") {
+            priceDisplay.textContent = `Precio: $${data.price}`;
+            localStorage.setItem("servicePrice", data.price);
+          }
+
+          if (data.type === "unavailableDaysUpdate") {
+            unavailableDays = data.days || [];
+            localStorage.setItem(
+              "unavailableDays",
+              JSON.stringify(unavailableDays)
+            );
+            generateCalendar(currentMonth, currentYear);
+          }
+
+          if (data.type === "availableTimesUpdate") {
+            availableTimes = data.times || {};
+            localStorage.setItem(
+              "availableTimes",
+              JSON.stringify(availableTimes)
+            );
+            if (selectedDate) generateTimeSlots(selectedDate);
+          }
+        });
       }
 
-      // Generar calendario
+      /* ---------------- Calendario ---------------- */
       function generateCalendar(month, year) {
         calendarBody.innerHTML = "";
         currentMonthEl.textContent = `${getMonthName(month)} ${year}`;
@@ -966,35 +989,31 @@
         const firstDay = new Date(year, month, 1);
         const lastDay = new Date(year, month + 1, 0);
         const daysInMonth = lastDay.getDate();
-        const startingDay = firstDay.getDay() === 0 ? 6 : firstDay.getDay() - 1;
+        const startingDay = firstDay.getDay() === 0 ? 6 : firstDay.getDay() - 1; // lunes como inicio
 
         let date = 1;
-
         for (let i = 0; i < 6; i++) {
           const row = document.createElement("tr");
-
           for (let j = 0; j < 7; j++) {
             const cell = document.createElement("td");
 
             if (i === 0 && j < startingDay) {
-              // Días del mes anterior
               cell.classList.add("inactive");
               const prevMonthDays = new Date(year, month, 0).getDate();
               cell.innerHTML = `<span class="day-number">${
                 prevMonthDays - (startingDay - j - 1)
               }</span>`;
             } else if (date > daysInMonth) {
-              // Días del mes siguiente
               cell.classList.add("inactive");
               cell.innerHTML = `<span class="day-number">${
                 date - daysInMonth
               }</span>`;
               date++;
             } else {
-              // Días del mes actual
               const cellDate = new Date(year, month, date);
               const today = new Date();
 
+              // marcar hoy
               if (
                 cellDate.getDate() === today.getDate() &&
                 cellDate.getMonth() === today.getMonth() &&
@@ -1003,6 +1022,7 @@
                 cell.classList.add("today");
               }
 
+              // fecha pasada
               if (
                 cellDate <
                 new Date(today.getFullYear(), today.getMonth(), today.getDate())
@@ -1010,11 +1030,19 @@
                 cell.classList.add("past");
               }
 
+              // dias no disponibles por día de la semana (0=domingo..6=sábado)
+              const weekday = cellDate.getDay();
+              if (unavailableDays && unavailableDays.includes(weekday)) {
+                cell.classList.add("unavailable-day");
+              }
+
               cell.innerHTML = `<span class="day-number">${date}</span>`;
 
+              // solo si no es pasado, inactivo, ni no disponible se puede clickear
               if (
                 !cell.classList.contains("past") &&
-                !cell.classList.contains("inactive")
+                !cell.classList.contains("inactive") &&
+                !cell.classList.contains("unavailable-day")
               ) {
                 cell.addEventListener("click", () => selectDate(cellDate));
               }
@@ -1024,12 +1052,40 @@
 
             row.appendChild(cell);
           }
-
           calendarBody.appendChild(row);
+        }
+
+        // marcar días con reservas (async)
+        markReservedDays(month, year);
+      }
+
+      /* marca como reserved-day los días que ya tienen reservas (opcional visual) */
+      async function markReservedDays(month, year) {
+        try {
+          const reservations = await fetchReservations();
+          const cells = calendarBody.querySelectorAll("td");
+          // limpiar previas marcas de reserva
+          cells.forEach((c) => c.classList.remove("reserved-day"));
+          reservations.forEach((r) => {
+            const d = new Date(r.date);
+            if (d.getMonth() === month && d.getFullYear() === year) {
+              cells.forEach((cell) => {
+                if (
+                  !cell.classList.contains("inactive") &&
+                  parseInt(cell.textContent) === d.getDate()
+                ) {
+                  cell.classList.add("reserved-day");
+                }
+              });
+            }
+          });
+        } catch (err) {
+          // si falla, no pasa nada
+          console.error("No se pudieron marcar días reservados:", err);
         }
       }
 
-      // Obtener nombre del mes
+      /* ---------------- Utiles ---------------- */
       function getMonthName(month) {
         const months = [
           "Enero",
@@ -1048,11 +1104,44 @@
         return months[month];
       }
 
-      // Seleccionar fecha
+      function pad(n) {
+        return n.toString().padStart(2, "0");
+      }
+
+      function formatDate(input) {
+        // acepta Date o string 'YYYY-MM-DD'
+        let d = input;
+        if (!(d instanceof Date)) d = new Date(input);
+        return `${pad(d.getDate())}/${pad(
+          d.getMonth() + 1
+        )}/${d.getFullYear()}`;
+      }
+
+      function isoDate(d) {
+        // Date -> YYYY-MM-DD
+        return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(
+          d.getDate()
+        )}`;
+      }
+
+      function normalizeTime(t) {
+        // convierte '08:00' o '8:00' en '8:00' (para comparar)
+        if (!t) return t;
+        const [h, m] = t.split(":");
+        return `${parseInt(h, 10)}:${m}`;
+      }
+
+      function showMessage(targetEl, text, type = "info") {
+        targetEl.textContent = text;
+        targetEl.className = `message ${type}`;
+      }
+
+      /* ---------------- Seleccionar fecha ---------------- */
       async function selectDate(date) {
         selectedDate = date;
         selectedTime = null;
 
+        // quitar active
         const allCells = calendarBody.querySelectorAll("td");
         allCells.forEach((cell) => cell.classList.remove("active"));
 
@@ -1067,27 +1156,259 @@
           }
         });
 
-        selectionMessage.textContent = `Seleccionaste el día ${formatDate(
-          date
-        )}`;
-        selectionMessage.className = "message info";
-
+        showMessage(
+          selectionMessage,
+          `Seleccionaste el día ${formatDate(date)}`,
+          "info"
+        );
         await generateTimeSlots(date);
         confirmationSection.style.display = "none";
       }
 
-      // --- NUEVO: cargar precio desde localStorage ---
-      function loadPrice() {
-        const savedPrice = localStorage.getItem("servicePrice") || "2500";
-        priceDisplay.textContent = `Precio: $${savedPrice}`;
+      /* ---------------- Generar slots de tiempo ---------------- */
+      async function generateTimeSlots(date) {
+        timeSlotsContainer.innerHTML = "";
+        try {
+          // obtener horarios reservados para la fecha
+          let reservedTimes = [];
+
+          if (useBackend) {
+            try {
+              const reservations = await fetchReservations();
+              reservedTimes = reservations
+                .filter(
+                  (r) => new Date(r.date).toDateString() === date.toDateString()
+                )
+                .map((r) => normalizeTime(r.time));
+            } catch (err) {
+              console.error("Error obteniendo reservas del backend:", err);
+              useBackend = false;
+              showMessage(
+                selectionMessage,
+                "Modo local activado. Las reservas se guardarán localmente.",
+                "warning"
+              );
+            }
+          }
+
+          if (!useBackend) {
+            const localReservations = JSON.parse(
+              localStorage.getItem("reservations") || "[]"
+            );
+            reservedTimes = localReservations
+              .filter(
+                (r) => new Date(r.date).toDateString() === date.toDateString()
+              )
+              .map((r) => normalizeTime(r.time));
+          }
+
+          // horarios permitidos para ese día (por configuración)
+          const dayKey = date.getDay().toString(); // 0..6
+          let times = availableTimes[dayKey] || [];
+
+          // si no hay configuración definida, generamos por defecto 8:00 a 19:30 cada 30'
+          if (!times || times.length === 0) {
+            times = [];
+            for (let hour = 8; hour <= 19; hour++) {
+              times.push(`${hour}:00`);
+              if (hour < 19) times.push(`${hour}:30`);
+            }
+          }
+
+          // Crear slots
+          times.forEach((displayTime) => {
+            const normalized = normalizeTime(displayTime);
+            const timeSlot = document.createElement("div");
+            timeSlot.classList.add("time-slot");
+            timeSlot.textContent = displayTime;
+
+            if (reservedTimes.includes(normalized)) {
+              timeSlot.classList.add("reserved");
+              timeSlot.textContent = displayTime;
+            } else {
+              timeSlot.addEventListener("click", () => {
+                selectTime(displayTime, timeSlot);
+              });
+            }
+
+            timeSlotsContainer.appendChild(timeSlot);
+          });
+        } catch (error) {
+          showMessage(
+            selectionMessage,
+            "Error al cargar los horarios. Intenta nuevamente.",
+            "error"
+          );
+          console.error("Error:", error);
+        }
       }
 
-      // --- NUEVO: escuchar actualización desde el panel ---
-      window.addEventListener("message", (event) => {
-        if (event.data.type === "priceUpdate") {
-          priceDisplay.textContent = `Precio: $${event.data.price}`;
+      /* ---------------- Seleccionar hora ---------------- */
+      function selectTime(time, elem) {
+        selectedTime = time;
+
+        // limpiar selección previa
+        const all = timeSlotsContainer.querySelectorAll(".time-slot");
+        all.forEach((t) => t.classList.remove("selected"));
+
+        // marcar seleccionado
+        if (elem) elem.classList.add("selected");
+
+        selectedInfo.innerHTML = `
+    <div class="selected-date"><i class="fas fa-calendar"></i> ${formatDate(
+      selectedDate
+    )}</div>
+    <div class="selected-time"><i class="fas fa-clock"></i> ${time}</div>
+  `;
+        confirmationSection.style.display = "block";
+      }
+
+      /* ---------------- Confirmar reserva ---------------- */
+      async function confirmReservation() {
+        if (!selectedDate || !selectedTime) {
+          showMessage(
+            selectionMessage,
+            "Seleccioná fecha y hora antes de confirmar.",
+            "error"
+          );
+          return;
         }
-      });
+
+        const clientName = clientNameInput.value.trim();
+        const phone = clientPhoneInput.value.trim();
+
+        if (!clientName || !phone) {
+          showMessage(selectionMessage, "Completá nombre y teléfono.", "error");
+          return;
+        }
+
+        const reservation = {
+          clientName,
+          phone,
+          date: isoDate(selectedDate), // YYYY-MM-DD
+          time: selectedTime,
+          reservationDate: new Date().toISOString(),
+          status: "confirmed",
+        };
+
+        // intentar guardar en backend
+        if (useBackend) {
+          try {
+            const res = await fetch(`${BACKEND_URL}/api/reservations`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(reservation),
+            });
+
+            if (!res.ok) throw new Error("Error creando reserva en backend");
+
+            // OK
+            showMessage(
+              selectionMessage,
+              "Reserva creada correctamente. Enviá la confirmación por WhatsApp.",
+              "success"
+            );
+
+            // refrescar slots para marcar como reservado
+            await generateTimeSlots(selectedDate);
+            confirmationSection.style.display = "none";
+
+            // abrir WhatsApp (opcional) con mensaje prellenado
+            const whatsappNumber = "3534766211";
+            const text = encodeURIComponent(
+              `Hola, quiero confirmar mi reserva. Nombre: ${clientName} - Fecha: ${formatDate(
+                selectedDate
+              )} - Hora: ${selectedTime}`
+            );
+            window.open(
+              `https://wa.me/${whatsappNumber}?text=${text}`,
+              "_blank"
+            );
+            return;
+          } catch (err) {
+            console.error("Error al crear reserva en backend:", err);
+            // pasar a fallback local
+            useBackend = false;
+            showMessage(
+              selectionMessage,
+              "No se pudo conectar al servidor. Guardando reserva en local.",
+              "warning"
+            );
+          }
+        }
+
+        // fallback: guardar en localStorage
+        try {
+          const reservations = JSON.parse(
+            localStorage.getItem("reservations") || "[]"
+          );
+          // id simple timestamp
+          reservation.id = Date.now().toString();
+          reservations.push(reservation);
+          localStorage.setItem("reservations", JSON.stringify(reservations));
+
+          showMessage(
+            selectionMessage,
+            "Reserva guardada en modo local. Enviá la confirmación por WhatsApp.",
+            "success"
+          );
+
+          // refrescar slots y cerrar confirmación
+          await generateTimeSlots(selectedDate);
+          confirmationSection.style.display = "none";
+
+          const whatsappNumber = "3534766211";
+          const text = encodeURIComponent(
+            `Hola, quiero confirmar mi reserva. Nombre: ${clientName} - Fecha: ${formatDate(
+              selectedDate
+            )} - Hora: ${selectedTime}`
+          );
+          window.open(`https://wa.me/${whatsappNumber}?text=${text}`, "_blank");
+        } catch (err) {
+          console.error("Error guardando en local:", err);
+          showMessage(
+            selectionMessage,
+            "No se pudo guardar la reserva.",
+            "error"
+          );
+        }
+      }
+
+      /* ---------------- API Reservas ---------------- */
+      async function fetchReservations() {
+        // devuelve array de reservas (backend o local)
+        if (useBackend) {
+          try {
+            const res = await fetch(`${BACKEND_URL}/api/reservations`);
+            if (!res.ok) throw new Error("Error al obtener reservas");
+            return await res.json();
+          } catch (err) {
+            console.error("Error fetching reservations:", err);
+            useBackend = false;
+            return JSON.parse(localStorage.getItem("reservations") || "[]");
+          }
+        } else {
+          return JSON.parse(localStorage.getItem("reservations") || "[]");
+        }
+      }
+
+      /* ---------------- PRECIO ---------------- */
+      async function loadPrice() {
+        // intenta backend -> fallback localStorage -> fallback 2500
+        try {
+          const res = await fetch(`${BACKEND_URL}/api/config`);
+          if (!res.ok) throw new Error("No hay config");
+          const data = await res.json();
+          priceDisplay.textContent = `Precio: $${data.price}`;
+        } catch (err) {
+          console.warn(
+            "No se pudo cargar precio desde backend, usando localStorage o valor por defecto.",
+            err
+          );
+          const saved = localStorage.getItem("servicePrice") || "2500";
+          priceDisplay.textContent = `Precio: $${saved}`;
+        }
+      }
     </script>
   </body>
 </html>
