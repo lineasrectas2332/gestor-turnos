@@ -903,6 +903,7 @@
         generateCalendar(currentMonth, currentYear);
         setupEventListeners();
         checkBackendConnection();
+        loadPrice(); // cargar precio guardado
       });
 
       // Verificar conexión con el backend
@@ -965,7 +966,7 @@
         const firstDay = new Date(year, month, 1);
         const lastDay = new Date(year, month + 1, 0);
         const daysInMonth = lastDay.getDate();
-        const startingDay = firstDay.getDay() === 0 ? 6 : firstDay.getDay() - 1; // Ajuste para que la semana empiece en lunes
+        const startingDay = firstDay.getDay() === 0 ? 6 : firstDay.getDay() - 1;
 
         let date = 1;
 
@@ -992,9 +993,8 @@
             } else {
               // Días del mes actual
               const cellDate = new Date(year, month, date);
-
-              // Verificar si es hoy
               const today = new Date();
+
               if (
                 cellDate.getDate() === today.getDate() &&
                 cellDate.getMonth() === today.getMonth() &&
@@ -1003,7 +1003,6 @@
                 cell.classList.add("today");
               }
 
-              // Verificar si es una fecha pasada
               if (
                 cellDate <
                 new Date(today.getFullYear(), today.getMonth(), today.getDate())
@@ -1013,7 +1012,6 @@
 
               cell.innerHTML = `<span class="day-number">${date}</span>`;
 
-              // Solo agregar evento de clic si no es una fecha pasada
               if (
                 !cell.classList.contains("past") &&
                 !cell.classList.contains("inactive")
@@ -1055,11 +1053,9 @@
         selectedDate = date;
         selectedTime = null;
 
-        // Limpiar selección previa
         const allCells = calendarBody.querySelectorAll("td");
         allCells.forEach((cell) => cell.classList.remove("active"));
 
-        // Resaltar celda seleccionada
         const day = date.getDate();
         const cells = calendarBody.querySelectorAll("td");
         cells.forEach((cell) => {
@@ -1080,253 +1076,18 @@
         confirmationSection.style.display = "none";
       }
 
-      // Generar slots de tiempo
-      async function generateTimeSlots(date) {
-        timeSlotsContainer.innerHTML = "";
+      // --- NUEVO: cargar precio desde localStorage ---
+      function loadPrice() {
+        const savedPrice = localStorage.getItem("servicePrice") || "2500";
+        priceDisplay.textContent = `Precio: $${savedPrice}`;
+      }
 
-        try {
-          let reservedTimes = [];
-
-          if (useBackend) {
-            // Intentar obtener reservas del backend
-            try {
-              const reservations = await fetchReservations();
-              reservedTimes = reservations
-                .filter((r) => {
-                  const reservationDate = new Date(r.date);
-                  return reservationDate.toDateString() === date.toDateString();
-                })
-                .map((r) => r.time);
-            } catch (error) {
-              console.error("Error obteniendo reservas del backend:", error);
-              // Si falla, usar localStorage
-              useBackend = false;
-              selectionMessage.textContent =
-                "Modo local activado. Las reservas se guardarán localmente.";
-              selectionMessage.className = "message warning";
-            }
-          }
-
-          // Si no estamos usando backend, obtener de localStorage
-          if (!useBackend) {
-            const localReservations = JSON.parse(
-              localStorage.getItem("reservations") || "[]"
-            );
-            reservedTimes = localReservations
-              .filter((r) => {
-                const reservationDate = new Date(r.date);
-                return reservationDate.toDateString() === date.toDateString();
-              })
-              .map((r) => r.time);
-          }
-
-          // Horarios disponibles (de 8:00 a 19:00 cada 30 minutos)
-          const availableTimes = [];
-          for (let hour = 8; hour <= 19; hour++) {
-            availableTimes.push(`${hour}:00`);
-            if (hour < 19) availableTimes.push(`${hour}:30`);
-          }
-
-          availableTimes.forEach((time) => {
-            const timeSlot = document.createElement("div");
-            timeSlot.classList.add("time-slot");
-
-            if (reservedTimes.includes(time)) {
-              timeSlot.classList.add("reserved");
-              timeSlot.textContent = time;
-            } else {
-              timeSlot.textContent = time;
-              timeSlot.addEventListener("click", () => selectTime(time));
-            }
-
-            timeSlotsContainer.appendChild(timeSlot);
-          });
-        } catch (error) {
-          selectionMessage.textContent =
-            "Error al cargar los horarios. Intenta nuevamente.";
-          selectionMessage.className = "message error";
-          console.error("Error:", error);
+      // --- NUEVO: escuchar actualización desde el panel ---
+      window.addEventListener("message", (event) => {
+        if (event.data.type === "priceUpdate") {
+          priceDisplay.textContent = `Precio: $${event.data.price}`;
         }
-      }
-
-      // Seleccionar hora
-      function selectTime(time) {
-        selectedTime = time;
-
-        // Limpiar selección previa
-        const allTimeSlots = timeSlotsContainer.querySelectorAll(".time-slot");
-        allTimeSlots.forEach((slot) => slot.classList.remove("selected"));
-
-        // Resaltar slot seleccionado
-        allTimeSlots.forEach((slot) => {
-          if (
-            slot.textContent === time &&
-            !slot.classList.contains("reserved")
-          ) {
-            slot.classList.add("selected");
-          }
-        });
-
-        selectionMessage.textContent = `Seleccionaste el ${formatDate(
-          selectedDate
-        )} a las ${selectedTime}`;
-        selectionMessage.className = "message info";
-
-        showConfirmationSection();
-      }
-
-      // Mostrar sección de confirmación
-      function showConfirmationSection() {
-        selectedInfo.innerHTML = `
-          <div class="selected-date">
-            <i class="far fa-calendar"></i>
-            <span>${formatDate(selectedDate)}</span>
-          </div>
-          <div class="selected-time">
-            <i class="far fa-clock"></i>
-            <span>${selectedTime}</span>
-          </div>
-        `;
-
-        confirmationSection.style.display = "block";
-      }
-
-      // Confirmar reserva
-      async function confirmReservation() {
-        const clientName = clientNameInput.value.trim();
-        const clientPhone = clientPhoneInput.value.trim();
-
-        if (!clientName || !clientPhone) {
-          selectionMessage.textContent =
-            "Por favor, completa todos los campos.";
-          selectionMessage.className = "message error";
-          return;
-        }
-
-        if (!selectedDate || !selectedTime) {
-          selectionMessage.textContent =
-            "Por favor, selecciona una fecha y hora.";
-          selectionMessage.className = "message error";
-          return;
-        }
-
-        // Mostrar estado de carga
-        btnConfirm.innerHTML = '<div class="loading"></div> Procesando...';
-        btnConfirm.disabled = true;
-
-        try {
-          // Crear objeto de reserva
-          const reservation = {
-            clientName,
-            phone: clientPhone,
-            date: selectedDate.toISOString(),
-            time: selectedTime,
-            reservationDate: new Date().toISOString(),
-            status: "pending",
-          };
-
-          // Enviar reserva al backend o guardar localmente
-          if (useBackend) {
-            try {
-              await createReservation(reservation);
-            } catch (error) {
-              console.error("Error creando reserva en backend:", error);
-              // Si falla, guardar en localStorage
-              saveReservationLocal(reservation);
-              useBackend = false;
-              selectionMessage.textContent =
-                "Modo local activado. Las reservas se guardarán localmente.";
-              selectionMessage.className = "message warning";
-            }
-          } else {
-            saveReservationLocal(reservation);
-          }
-
-          // Preparar mensaje de WhatsApp
-          const whatsappMessage = `Hola, me gustaría reservar un turno para el ${formatDate(
-            selectedDate
-          )} a las ${selectedTime}. Mi nombre es ${clientName}.`;
-          const encodedMessage = encodeURIComponent(whatsappMessage);
-          const whatsappURL = `https://wa.me/3534766211?text=${encodedMessage}`;
-
-          // Abrir WhatsApp
-          window.open(whatsappURL, "_blank");
-
-          // Mostrar mensaje de éxito
-          selectionMessage.textContent =
-            "¡Reserva realizada con éxito! Por favor, confirma mediante WhatsApp.";
-          selectionMessage.className = "message success";
-
-          // Limpiar formulario
-          clientNameInput.value = "";
-          clientPhoneInput.value = "";
-          confirmationSection.style.display = "none";
-
-          // Actualizar slots de tiempo
-          await generateTimeSlots(selectedDate);
-        } catch (error) {
-          selectionMessage.textContent =
-            "Error al crear la reserva. Intenta nuevamente.";
-          selectionMessage.className = "message error";
-          console.error("Error:", error);
-        } finally {
-          // Restaurar botón
-          btnConfirm.innerHTML =
-            '<i class="fab fa-whatsapp"></i> Enviar confirmación por WhatsApp';
-          btnConfirm.disabled = false;
-        }
-      }
-
-      // Guardar reserva localmente
-      function saveReservationLocal(reservation) {
-        const reservations = JSON.parse(
-          localStorage.getItem("reservations") || "[]"
-        );
-        reservations.push(reservation);
-        localStorage.setItem("reservations", JSON.stringify(reservations));
-        return true;
-      }
-
-      // Funciones de utilidad
-      function formatDate(date) {
-        return `${date.getDate()} de ${getMonthName(
-          date.getMonth()
-        )} de ${date.getFullYear()}`;
-      }
-
-      // Funciones de API
-      async function fetchReservations() {
-        try {
-          const response = await fetch(`${BACKEND_URL}/reservations`);
-          if (!response.ok) throw new Error("Error al obtener reservas");
-          return await response.json();
-        } catch (error) {
-          console.error("Error fetching reservations:", error);
-          throw error;
-        }
-      }
-
-      async function createReservation(reservation) {
-        try {
-          const response = await fetch(`${BACKEND_URL}/reservations`, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify(reservation),
-          });
-
-          if (!response.ok) {
-            const errorData = await response.json().catch(() => ({}));
-            throw new Error(errorData.message || "Error al crear reserva");
-          }
-
-          return await response.json();
-        } catch (error) {
-          console.error("Error creating reservation:", error);
-          throw error;
-        }
-      }
+      });
     </script>
   </body>
 </html>
